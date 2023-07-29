@@ -906,7 +906,7 @@ export async function handler(chatUpdate) {
                 if (!("useDocument" in chat)) chat.useDocument = false
                 if (!("viewonce" in chat)) chat.viewonce = false
                 if (!("viewOnce" in chat)) chat.viewOnce = false
-                if (!("welcome" in chat)) chat.welcome = false
+                if (!("welcome" in chat)) chat.welcome = true
                 if (!isNumber(chat.expired)) chat.expired = 0
             } else
                 global.db.data.chats[m.chat] = {
@@ -934,7 +934,7 @@ export async function handler(chatUpdate) {
                     useDocument: false,
                     viewOnce: false,
                     viewonce: false,
-                    welcome: false,
+                    welcome: true,
                 }
             let akinator = global.db.data.users[m.sender].akinator
             if (typeof akinator !== 'object')
@@ -1331,9 +1331,6 @@ export async function participantsUpdate({
     action
 }) {
     if (opts["self"] || this.isInit) return;
-
-    if (id in this.chats) return; // Agar login pertama tidak spam
-
     if (global.db.data == null) await loadDatabase();
     const chat = global.db.data.chats[id] || {};
     const emoji = {
@@ -1355,6 +1352,7 @@ export async function participantsUpdate({
         case "remove":
             if (chat.welcome) {
                 const groupMetadata = await this.groupMetadata(id) || (this.chats[id] || {}).metadata;
+                for (let user of participants) {
                 const isAddAction = action === "add";
                 const welcomeText = isAddAction ? (chat.sWelcome || this.welcome || conn.welcome || `${emoji.welcome} Selamat datang, @user!`).replace("@subject", await this.getName(id)).replace("@desc", groupMetadata.desc?.toString() || "tidak diketahui") :
                     (chat.sBye || this.bye || conn.bye || `${emoji.bye} Sampai jumpa, @user!`);
@@ -1363,7 +1361,8 @@ export async function participantsUpdate({
                 const byeran = await WelcomeLeave(await this.profilePictureUrl(id, "image").catch(() => hwaifu.getRandom()), await this.getName(id), katarandom.getRandom());
 
                 const lapor = `\n\n${emoji.mail} *Pesan:* Jika menemukan bug, error, atau kesulitan dalam penggunaan, silakan laporkan/tanyakan kepada ${emoji.owner}`;
-                await this.sendFile(id, isAddAction ? welran : byeran, '', welcomeText + lapor, fakes);
+                await this.sendFile(id, isAddAction ? welran : byeran, '', welcomeText.replace("@user", "@" + participants[0].split("@")[0]) + lapor, fakes, null, { mentions: [participants[0]] });
+                }
             }
             break;
         case "promote":
@@ -1387,13 +1386,11 @@ export async function participantsUpdate({
  * @param {import("@adiwajshing/baileys").BaileysEventMap<unknown>["groups.update"]} groupsUpdate 
  */
 export async function groupsUpdate(groupsUpdate) {
-    if (opts["self"]) return;
-
+    if (opts["self"]) return
     for (const groupUpdate of groupsUpdate) {
-        const id = groupUpdate.id;
-        if (!id) continue;
-
-        let chats = global.db.data.chats[id] || {};
+        const id = groupUpdate.id
+        if (!id) continue
+        let chats = global.db.data.chats[id] || {}
         const emoji = {
             desc: '📝',
             subject: '📌',
@@ -1403,40 +1400,42 @@ export async function groupsUpdate(groupsUpdate) {
             announceOff: '🔓',
             restrictOn: '🚫',
             restrictOff: '✅',
-        };
-
-        let text = "";
-        if (!chats.detect) continue;
-
-        if (groupUpdate.desc) {
-            text = (chats.sDesc || this.sDesc || conn.sDesc || `*${emoji.desc} Deskripsi telah diubah menjadi*\n${groupUpdate.desc}`);
-        } else if (groupUpdate.subject) {
-            text = (chats.sSubject || this.sSubject || conn.sSubject || `*${emoji.subject} Subjek telah diubah menjadi*\n${groupUpdate.subject}`);
-        } else if (groupUpdate.icon) {
-            text = (chats.sIcon || this.sIcon || conn.sIcon || `*${emoji.icon} Icon telah diubah menjadi*`);
-        } else if (groupUpdate.revoke) {
-            text = (chats.sRevoke || this.sRevoke || conn.sRevoke || `*${emoji.revoke} Tautan grup telah diubah menjadi*\n${groupUpdate.revoke}`);
-        } else if (groupUpdate.announce === true) {
-            text = (chats.sAnnounceOn || this.sAnnounceOn || conn.sAnnounceOn || `*${emoji.announceOn} Grup telah ditutup!*`);
-        } else if (groupUpdate.announce === false) {
-            text = (chats.sAnnounceOff || this.sAnnounceOff || conn.sAnnounceOff || `*${emoji.announceOff} Grup telah dibuka!*`);
-        } else if (groupUpdate.restrict === true) {
-            text = (chats.sRestrictOn || this.sRestrictOn || conn.sRestrictOn || `*${emoji.restrictOn} Grup telah dibatasi hanya untuk peserta!*`);
-        } else if (groupUpdate.restrict === false) {
-            text = (chats.sRestrictOff || this.sRestrictOff || conn.sRestrictOff || `*${emoji.restrictOff} Grup telah dibatasi hanya untuk admin!*`);
         }
 
-        if (!text) break; // Berhenti mengirim pesan jika tidak ada pesan yang perlu dikirim
+        let text = ""
+        if (!chats.detect) continue
 
+        if (groupUpdate.desc) {
+            text = (chats.sDesc || this.sDesc || conn.sDesc || `*${emoji.desc} Deskripsi telah diubah menjadi*\n@desc`)
+                .replace("@desc", groupUpdate.desc)
+        } else if (groupUpdate.subject) {
+            text = (chats.sSubject || this.sSubject || conn.sSubject || `*${emoji.subject} Subjek telah diubah menjadi*\n@subject`)
+                .replace("@subject", groupUpdate.subject)
+        } else if (groupUpdate.icon) {
+            text = (chats.sIcon || this.sIcon || conn.sIcon || `*${emoji.icon} Icon telah diubah menjadi*`)
+                .replace("@icon", groupUpdate.icon)
+        } else if (groupUpdate.revoke) {
+            text = (chats.sRevoke || this.sRevoke || conn.sRevoke || `*${emoji.revoke} Tautan grup telah diubah menjadi*\n@revoke`)
+                .replace("@revoke", groupUpdate.revoke)
+        } else if (groupUpdate.announce === true) {
+            text = (chats.sAnnounceOn || this.sAnnounceOn || conn.sAnnounceOn || `*${emoji.announceOn} Grup telah ditutup!*`)
+        } else if (groupUpdate.announce === false) {
+            text = (chats.sAnnounceOff || this.sAnnounceOff || conn.sAnnounceOff || `*${emoji.announceOff} Grup telah dibuka!*`)
+        } else if (groupUpdate.restrict === true) {
+            text = (chats.sRestrictOn || this.sRestrictOn || conn.sRestrictOn || `*${emoji.restrictOn} Grup telah dibatasi hanya untuk peserta!*`)
+        } else if (groupUpdate.restrict === false) {
+            text = (chats.sRestrictOff || this.sRestrictOff || conn.sRestrictOff || `*${emoji.restrictOff} Grup telah dibatasi hanya untuk admin!*`)
+        }
+
+        if (!text) continue
         this.sendMessage(id, {
             text: text.trim(),
             mentions: []
         }, {
             quoted: fakes
-        });
+        })
     }
 }
-
 
 /**
 Delete Chat
@@ -1456,13 +1455,13 @@ export async function deleteUpdate(message) {
         let chat = global.db.data.chats[msg.chat] || {}
         if (chat.antiDelete)
             return
-        this.sendMessage(msg.sender, {
+        this.sendMessage(msg.key.remoteJid, {
             text: `❗ Terdeteksi *@${participant.split`@`[0]}* telah menghapus pesan.\nUntuk mematikan fitur ini, ketik\n*.off antidelete*\n\nUntuk menghapus pesan yang dikirim BOT, reply pesan dengan perintah\n*.delete*`,
             mentions: [participant]
         }, {
             quoted: msg
         })
-        this.copyNForward(msg.sender, msg, false).catch(e => console.log(e, msg))
+        this.copyNForward(msg.chat, msg, false).catch(e => console.log(e, msg))
     } catch (e) {
         console.error(e)
     }

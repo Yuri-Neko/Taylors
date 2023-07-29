@@ -87,6 +87,7 @@
         "javascript-obfuscator": "*",
         "jimp": "*",
         "jsdom": "*",
+        "link-preview-js": "*",
         "lodash": "*",
         "lowdb": "^3.0.0",
         "mal-scraper": "*",
