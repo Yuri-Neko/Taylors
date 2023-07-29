@@ -29,8 +29,9 @@ export async function before(m) {
 	};
 
 	const messageType = messages[m.messageStubType];
+	
 	if (messageType) {
-		await this.sendMessage(m.chat, { text: `${edtr} ${messageType}`, mentions: [m.sender] }, { quoted: fakes });
+		await this.sendMessage(m.chat, { text: `${edtr} ${messageType}`, mentions: m.messageStubParameters[0] !== undefined ? [m.sender, m.messageStubParameters[0]] : [m.sender] }, { quoted: fakes });
 	} else {
 		console.log({
 			messageStubType: m.messageStubType,

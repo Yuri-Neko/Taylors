@@ -69,14 +69,14 @@ async function getInfoNegaraAcak() {
         const ogImageURL = $('meta[property="og:image"]').attr('content');
 
         const info = {
-            nama: negara.name.common,
-            namaResmi: negara.name.official,
-            wilayah: negara.region,
-            subwilayah: negara.subregion,
-            zonaWaktu: negara.timezones,
-            bendera: negara.flag,
-            populasi: negara.population,
-            urlGambarOg: ogImageURL
+            nama: negara.name.common || 'Tidak diketahui',
+            namaResmi: negara.name.official || 'Tidak diketahui',
+            wilayah: negara.region || 'Tidak diketahui',
+            subwilayah: negara.subregion || 'Tidak diketahui',
+            zonaWaktu: negara.timezones || 'Tidak diketahui',
+            bendera: negara.flag || 'Tidak diketahui',
+            populasi: negara.population || 'Tidak diketahui',
+            urlGambarOg: ogImageURL || 'https://raw.githubusercontent.com/AyGemuy/Taylors/master/thumbnail.jpg'
         };
 
         return info;

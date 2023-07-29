@@ -10,7 +10,7 @@ if (global.db.data.chats[m.chat]?.simi) return m.reply("Matikan fitur *SIMI* ter
         "antiDelete", "antiCall", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel",
         "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic",
         "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory",
-        "bcjoin", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews",
+        "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews",
         "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly"
     ]
 
@@ -30,7 +30,7 @@ if (global.db.data.chats[m.chat]?.simi) return m.reply("Matikan fitur *SIMI* ter
             const statusText = isEnable ? "✅ diaktifkan" : "❌ dinonaktifkan"
 
             // Reverse the true/false values for specified options
-            const reverseOptions = ["antiDelete", "detect", "getmsg", "lastAnime", "latestNews"]
+            const reverseOptions = ["getmsg", "lastAnime", "latestNews"]
             if (reverseOptions.includes(optionId)) {
                 global.db.data.chats[m.chat][optionId] = !global.db.data.chats[m.chat][optionId]
             }
@@ -87,7 +87,7 @@ handler.before = async (m, {
         const statusText = isEnable ? "✅ diaktifkan" : "❌ dinonaktifkan"
 
         // Reverse the true/false values for specified options
-        const reverseOptions = ["antiDelete", "detect", "getmsg", "lastAnime", "latestNews"]
+        const reverseOptions = ["getmsg", "lastAnime", "latestNews"]
         if (reverseOptions.includes(optionId)) {
             global.db.data.chats[m.chat][optionId] = !global.db.data.chats[m.chat][optionId]
         }

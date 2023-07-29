@@ -2,7 +2,9 @@ import axios from "axios";
 import uploadImage from "../lib/uploadImage.js";
 
 let handler = async (m, {
-    text
+    text,
+    usedPrefix,
+    command
 }) => {
     let lister = [
         "v1",
@@ -14,7 +16,7 @@ let handler = async (m, {
     ];
 
     let [feature, inputs] = text.split(" ");
-    if (!lister.includes(feature.toLowerCase())) return m.reply(`*Contoh:*\n${usedPrefix}${command} v2 link\n\n*Pilih jenis yang ada:*\n${lister.map(v => "  ○ " + v.toUpperCase()).join("\n")}`);
+    if (!lister.includes(feature.toLowerCase())) return m.reply(`*Contoh:*\n${usedPrefix + command} v2 link\n\n*Pilih jenis yang ada:*\n${lister.map(v => "  ○ " + v.toUpperCase()).join("\n")}`);
 
     let LinkReg = /https?:\/\//.test(inputs) ? inputs : "https://" + inputs;
     if (!LinkReg) return m.reply("Masukkan tautan yang valid");
