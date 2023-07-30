@@ -34,7 +34,7 @@ Bonus: ${poin} XP
 }
 handler.help = ['question']
 handler.tags = ['game']
-handler.command = /^question/i
+handler.command = /^question$/i;
 
 export default handler
 

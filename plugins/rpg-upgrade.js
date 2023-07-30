@@ -1,138 +1,99 @@
-let handler = async (m, { conn, command, args, usedPrefix }) => { 
-    try { 
-        let user = global.db.data.users[m.sender]
-        let kayu = user.kayu * 1
-        let batu = user.batu * 1
-        let string = user.string * 1
-        let money = user.money * 1
-        let iron = user.iron * 1
-        let fishingrod = user.fishingrod * 1
-        let pickaxe = user.pickaxe * 1
-        let sword = user.sword * 1
-        let type = (args[0] || '').toLowerCase()
-        let prefix = usedPrefix
-        
-        const buttons1 = [
-            {buttonId: `${prefix}craft fishingrod`, buttonText: {displayText: `Craft ${rpg.emoticon('fishingrod')}FishingRod`}, type: 1},
-            {buttonId: `${prefix}craft pickaxe`, buttonText: {displayText: `Craft ${rpg.emoticon('pickaxe')}Pickaxe`}, type: 1},
-            {buttonId: `${prefix}craft sword`, buttonText: {displayText: `Craft ${rpg.emoticon('sword')}Sword`}, type: 1},
-        ]
-        let lmao1 = `Gunakan Format *${usedPrefix}${command} [type]*
-contoh *${usedPrefix}${command} fishingRod*
+const handler = async (m, { conn, command, args, usedPrefix }) => {
+  try {
+    let user = global.db.data.users[m.sender];
+    let fishingrod = user.fishingrod * 1;
+    let pickaxe = user.pickaxe * 1;
+    let sword = user.sword * 1;
+    let type = (args[0] || '').toLowerCase();
+    let prefix = usedPrefix;
 
+    let lmao1 = `Gunakan Format *${usedPrefix}${command} [type]*
+contoh *${usedPrefix}${command} fishingrod*
 *📌List yang Bisa Di Upgrade*
 ${rpg.emoticon('fishingrod')}FishingRod
 ${rpg.emoticon('pickaxe')}Pickaxe
 ${rpg.emoticon('sword')}Sword
-`.trim()
-        const buttonMessage1 = {
-            text: lmao1,
-            footer: wm,
-            buttons: buttons1,
-            headerType: 1
-        
+`.trim();
+
+    switch (type) {
+      case 'fishingrod':
+        if (fishingrod == 0) {
+          m.reply(`anda belum memiliki *🎣FishingRod*\nuntuk mendapatkannya ketik *${usedPrefix}craft fishingrod*`);
+        } else if (fishingrod > 9) {
+          m.reply(`*${rpg.emoticon('fishingrod')}FishingRod* kamu sudah level max`);
+        } else {
+          let _kayu = fishingrod * 25;
+          let _string = fishingrod * 15;
+          let _money = fishingrod * 10000;
+          if (user.kayu < _kayu || user.string < _string || user.money < _money) {
+            m.reply(`Material kamu kurang!!${user.kayu < _kayu ? `\n${rpg.emoticon('kayu')}Kayu Kamu Kurang *${_kayu - user.kayu}*` : ''}${user.string < _string ? `\n${rpg.emoticon('string')}String Kamu Kurang *${_string - user.string}*` : ''}${user.money < _money ? `\n${rpg.emoticon('money')}Uang Kamu Kurang *${_money - user.money}*` : ''}`);
+          } else {
+            user.fishingrod += 1;
+            user.kayu -= _kayu;
+            user.string -= _string;
+            user.money -= _money;
+            user.fishingroddurability = 0;
+            user.fishingroddurability += fishingrod * 50;
+            m.reply(`Succes mengupgrade *${rpg.emoticon('fishingrod')}FishingRod*`);
+          }
         }
-        switch (type) {
-            case 'fishingrod':
-                if (fishingrod == 0) {
-                    const buttons = [
-                        {buttonId: usedPrefix + `craft fishingrod`, buttonText: {displayText: `Craft ${rpg.emoticon('fishingrod')}FishingRod`}, type: 1},
-                    ]
-                    let lmao = `anda belum memiliki *🎣FishingRod*
-untuk mendapatkannya ketik *${usedPrefix}craft fishingrod*`
-                    const buttonMessage = {
-                        text: lmao,
-                        footer: wm,
-                        buttons: buttons,
-                        headerType: 1
-                    }
-                    return conn.sendMessage(m.chat, { text: lmao }, { quoted: m })
-                }
-                if (fishingrod > 9) return conn.reply(m.chat, `*${rpg.emoticon('fishingrod')}FishingRod* kamu sudah level max`, m)
-                let _kayu = fishingrod * 25
-                let _string = fishingrod * 15
-                let _money = fishingrod * 10000
-                if (kayu < _kayu || string < _string || money < _money) return conn.reply(m.chat, `Material kamu kurang!!${kayu < _kayu ? `\n${rpg.emoticon('kayu')}Kayu Kamu Kurang *${_kayu - kayu}*` : ''}${string < _string ? `\n${rpg.emoticon('string')}String Kamu Kurang *${_string - string}*` : ''}${user.money < _money ? `\n${rpg.emoticon('money')}Uang Kamu Kurang *${_money - money}*` : ''}`, m)
-                user.fishingrod += 1
-                user.kayu -= _kayu * 1
-                user.string -= _string * 1
-                user.money -= _money * 1
-                user.fishingroddurability = 0 
-                user.fishingroddurability += fishingrod * 50
-                conn.reply(m.chat, `Succes mengupgrade *${rpg.emoticon('fishingrod')}FishingRod*`, m)
-                break
-            case 'pickaxe':
-                if (pickaxe == 0) {
-                    const buttons = [
-                        {buttonId: usedPrefix + `craft pickaxe`, buttonText: {displayText: `Craft ${rpg.emoticon('pickaxe')}Pickaxe`}, type: 1},
-                    ]
-                    let lmao = `anda belum memiliki *${rpg.emoticon('pickaxe')}Pickaxe*
-untuk memilikinya ketik *${usedPrefix}craft Pickaxe*`
-                    const buttonMessage = {
-                        text: lmao,
-                        footer: wm,
-                        buttons: buttons,
-                        headerType: 1
-                    }
-                    return conn.sendMessage(m.chat, { text: lmao }, { quoted: m })
-                }
-                if (pickaxe > 9) return conn.reply(m.chat, `*${rpg.emoticon('pickaxe')}Pickaxe* kamu sudah level max!!`, m)
-                let __batu = pickaxe * 25
-                let __kayu = pickaxe * 15
-                let __money = pickaxe * 15000
-                if (batu < __batu || kayu < __kayu || money < __money) return conn.reply(m.chat, `
-Material Anda Kurang!!
-${batu < __batu ? `\n${rpg.emoticon('batu')}Batu kamu kurang *${__batu - batu}*` : ''}${kayu < __kayu ? `\n${rpg.emoticon('kayu')}Kayu kamu kurang *${__kayu - kayu}*` : ''}${money < __money ? `\n${rpg.emoticon('money')}Uang kamu kurang *${__money - money}*` : ''}`, m)
-                user.pickaxe += 1
-                user.kayu -= __kayu * 1
-                user.batu -= __batu * 1
-                user.money -= __money * 1
-                user.pickaxedurability = 0
-                user.pickaxedurability += pickaxe * 50
-                conn.reply(m.chat, `Succes mengupgrade *${rpg.emoticon('pickaxe')}Pickaxe*`, m)
-                break
-            case 'sword':
-                if (sword == 0) {
-                    const buttons = [
-                        {buttonId: usedPrefix + `craft sword`, buttonText: {displayText: `Craft ${rpg.emoticon('sword')}sword`}, type: 1},
-                    ]
-                    let lmao = `anda belum memiliki *${rpg.emoticon('sword')}Sword*
-untuk memilikinya ketik *${usedPrefix}craft sword*`
-                    const buttonMessage = {
-                        text: lmao,
-                        footer: wm,
-                        buttons: buttons,
-                        headerType: 1
-                    }
-                    return conn.sendMessage(m.chat, { text: lmao }, { quoted: m })
-                }
-                if (sword > 9) return conn.reply(m.chat, `*${rpg.emoticon('sword')}Sword* kamu sudah level max!!`, m)
-                let _iron = sword * 25
-                let ___kayu = sword * 15
-                let ___money = sword * 10000
-                if (iron < _iron || kayu < ___kayu || money < ___money) return conn.reply(m.chat, `
-Material Anda Kurang!!
-${iron < _iron ? `\n${rpg.emoticon('iron')}Iron kamu kurang *${_iron - iron}*` : ''}${kayu < ___kayu ? `\n${rpg.emoticon('kayu')}Kayu kamu kurang *${___kayu - kayu}*` : ''}${money < ___money ? `\n${rpg.emoticon('money')}Uang kamu kurang *${___money - money}*` : ''}`, m)
-                user.sword += 1
-                user.iron -= _iron * 1
-                user.kayu -= ___kayu * 1
-                user.money -= ___money * 1
-                user.sworddurability = 0 
-                user.sworddurability += sword * 50 
-                conn.reply(m.chat, `Succes mengupgrade *${rpg.emoticon('sword')}Sword*`, m)
-                break
-            default :
-                return conn.sendMessage(m.chat, { text: lmao1 }, { quoted: m })
+        break;
+      case 'pickaxe':
+        if (pickaxe == 0) {
+          m.reply(`anda belum memiliki *${rpg.emoticon('pickaxe')}Pickaxe*\nuntuk memilikinya ketik *${usedPrefix}craft pickaxe*`);
+        } else if (pickaxe > 9) {
+          m.reply(`*${rpg.emoticon('pickaxe')}Pickaxe* kamu sudah level max`);
+        } else {
+          let __batu = pickaxe * 25;
+          let __kayu = pickaxe * 15;
+          let __money = pickaxe * 15000;
+          if (user.batu < __batu || user.kayu < __kayu || user.money < __money) {
+            m.reply(`Material Anda Kurang!!${user.batu < __batu ? `\n${rpg.emoticon('batu')}Batu kamu kurang *${__batu - user.batu}*` : ''}${user.kayu < __kayu ? `\n${rpg.emoticon('kayu')}Kayu kamu kurang *${__kayu - user.kayu}*` : ''}${user.money < __money ? `\n${rpg.emoticon('money')}Uang kamu kurang *${__money - user.money}*` : ''}`);
+          } else {
+            user.pickaxe += 1;
+            user.kayu -= __kayu;
+            user.batu -= __batu;
+            user.money -= __money;
+            user.pickaxedurability = 0;
+            user.pickaxedurability += pickaxe * 50;
+            m.reply(`Succes mengupgrade *${rpg.emoticon('pickaxe')}Pickaxe*`);
+          }
         }
-    } catch (e) {
-        console.log(e)
-        throw eror
+        break;
+      case 'sword':
+        if (sword == 0) {
+          m.reply(`anda belum memiliki *${rpg.emoticon('sword')}Sword*\nuntuk memilikinya ketik *${usedPrefix}craft sword*`);
+        } else if (sword > 9) {
+          m.reply(`*${rpg.emoticon('sword')}Sword* kamu sudah level max`);
+        } else {
+          let _iron = sword * 25;
+          let ___kayu = sword * 15;
+          let ___money = sword * 10000;
+          if (user.iron < _iron || user.kayu < ___kayu || user.money < ___money) {
+            m.reply(`Material Anda Kurang!!${user.iron < _iron ? `\n${rpg.emoticon('iron')}Iron kamu kurang *${_iron - user.iron}*` : ''}${user.kayu < ___kayu ? `\n${rpg.emoticon('kayu')}Kayu kamu kurang *${___kayu - user.kayu}*` : ''}${user.money < ___money ? `\n${rpg.emoticon('money')}Uang kamu kurang *${___money - user.money}*` : ''}`);
+          } else {
+            user.sword += 1;
+            user.iron -= _iron;
+            user.kayu -= ___kayu;
+            user.money -= ___money;
+            user.sworddurability = 0;
+            user.sworddurability += sword * 50;
+            m.reply(`Succes mengupgrade *${rpg.emoticon('sword')}Sword*`);
+          }
+        }
+        break;
+      default:
+        m.reply(lmao1);
     }
-}
-handler.help = ['upgrade']
-handler.tags = ['rpg']
-handler.command = /^(up(grade)?)$/i
+  } catch (e) {
+    console.log(e);
+    throw e;
+  }
+};
 
-handler.fail = null
+handler.help = ['upgrade'];
+handler.tags = ['rpg'];
+handler.command = /^(up(grade)?)$/i;
+handler.fail = null;
 
-export default handler
+export default handler;
