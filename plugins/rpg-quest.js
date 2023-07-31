@@ -261,8 +261,6 @@ handler.before = async m => {
       m.reply(caption);
       return false;
     }
-  } else {
-    m.reply("❌ Jawaban Anda salah!");
   }
 };
 

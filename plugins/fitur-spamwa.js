@@ -1,22 +1,27 @@
 let handler = async (m, { conn, text }) => {
+  let [nomor, pesan, jumlah] = text.split(/[^\w\s]/g);
 
-let [nomor, pesan, jumlah] = text.split(/[^\w\s]/g)
-if (!nomor) throw '*[ ⚠️ ] HARAP MASUKKAN NOMOR YANG AKAN DI SPAM PESAN!*\n*PENGGUNAAN YANG BENAR:*\n*—◉ #spamwa nomor|teks|jumlah*\n*jumlah:*\n*—◉ #spamwa 628xxxxx|hai :v|25*'
-if (!pesan) throw '*[ ⚠️ ] HARAP MASUKKAN PESAN KE SPAM!*\n*GUNAKAN YANG BENAR:*\n*—◉ #spamwa nomor|teks|jumlah*\n*CONTOH:*\n*—◉ #spamwa 628xxxxx|merespons :v|25*'
-if (jumlah && isNaN(jumlah)) throw '*[ ⚠️ ] KUANTITAS HARUS ADALAH NOMOR!*\n*PENGGUNAAN YANG TEPAT:*\n*—◉ #spamwa nomor|teks|jumlah*\n*CONTOH:*\n*—◉ #spamwa 628xxxxx|merespons :v|25*'
+  if (!nomor) throw '*[ ⚠️ ] Harap masukkan nomor tujuan untuk melakukan spam pesan!*';
+  if (!pesan) throw '*[ ⚠️ ] Harap masukkan pesan yang ingin di-spam!*';
+  if (jumlah && isNaN(jumlah)) throw '*[ ⚠️ ] Jumlah pesan harus berupa angka!*';
 
-let fixedNumber = nomor.replace(/[-+<>@]/g, '').replace(/ +/g, '').replace(/^[0]/g, '62') + '@s.whatsapp.net'
-let fixedJumlah = jumlah ? jumlah * 1 : 10
-if (fixedJumlah > 10) throw '*[ ⚠️ ] TERLALU BANYAK PESAN! JUMLAH HARUS KURANG DARI 10 PESAN*️'
-await m.reply(`*[❗] SPAM PESAN KE NOMOR ${nomor} ITU SUKSES DILAKUKAN*\n*JUMLAH TERKIRIM:*\n*—◉ ${fixedJumlah} waktu!*`)
-for (let i = fixedJumlah; i > 1; i--) {
-if (i !== 0) conn.reply(fixedNumber, pesan.trim(), m)
-}}
-handler.help = ['spamwa <number>|<mesage>|<no of messages>']
-handler.tags = ['tools']
-handler.command = /^spam(wa)?$/i
-handler.group = false
-handler.premium = true
-handler.private = true
-handler.limit = true
-export default handler
+  let fixedNumber = nomor.replace(/[-+<>@]/g, '').replace(/ +/g, '').replace(/^[0]/g, '62') + '@s.whatsapp.net';
+  let fixedJumlah = jumlah ? jumlah * 1 : 10;
+
+  if (fixedJumlah > 10) throw '*[ ⚠️ ] Terlalu banyak pesan! Jumlah harus kurang dari 10 pesan*️';
+  
+  await m.reply(`*[❗] Spam pesan ke nomor ${nomor} berhasil dilakukan*\n*Jumlah terkirim: ${fixedJumlah} kali!*`);
+
+  for (let i = fixedJumlah; i > 1; i--) {
+    if (i !== 0) conn.reply(fixedNumber, pesan.trim(), m);
+  }
+}
+
+handler.help = ['spamwa <number>|<message>|<no of messages>'];
+handler.tags = ['tools'];
+handler.command = /^spam(wa)?$/i;
+handler.group = false;
+handler.premium = true;
+handler.private = true;
+handler.limit = true;
+export default handler;

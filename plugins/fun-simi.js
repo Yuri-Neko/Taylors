@@ -1,28 +1,29 @@
-import fetch from "node-fetch"
-let handler = async (m, { conn, text, command, args }) => {
-  if (!args[0]) throw `Use example:\n*.${command} halo*\n\nAnd Using:\n*.${command} |halo*`
-  
-  let urut = text.split`|`
-  let one = urut[1]
-  if (one) {
-  let api = await fetch("http://api.brainshop.ai/get?bid=153868&key=rcKonOgrUFmn5usX&uid=1&msg=" + encodeURIComponent(one))
-  let res = await api.json()
-  let reis = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=id&dt=t&q=" + res.cnt)
-  let resu = await reis.json()
-  m.reply(resu[0][0][0], null, m.mentionedJid ? {
-        mentions: conn.parseMention(m.text)
-    } : {})
-  } else {
-  let api = await fetch("https://api.simsimi.net/v2/?text=" + text + "&lc=id")
-  let res = await api.json()
-  m.reply(res.success, null, m.mentionedJid ? {
-        mentions: conn.parseMention(m.text)
-    } : {})
-  }
-  
-}
-handler.command = ["simi"]
-handler.tags = ["fun"]
-handler.help = ["simi"]
+import fetch from "node-fetch";
 
-export default handler
+let handler = async (m, { conn, usedPrefix, text }) => {
+    if (!text) throw `Contoh Penggunaan:\n🤖 *${usedPrefix + command} halo*\n\nDan dengan Trigger:\n🤖 *${usedPrefix + command} |halo*`;
+
+    let [trigger, message] = text.split("|").map(v => v.trim());
+    let apiEndpoint = trigger ? "http://api.brainshop.ai/get?bid=153868&key=rcKonOgrUFmn5usX&uid=1&msg=" + encodeURIComponent(message) : "https://api.simsimi.net/v2/?text=" + text + "&lc=id";
+
+    let api = await fetch(apiEndpoint);
+    let res = await api.json();
+
+    let translatedMessage = '';
+    if (trigger) {
+        let translationApi = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=id&dt=t&q=" + res.cnt);
+        let translatedResponse = await translationApi.json();
+        translatedMessage = translatedResponse[0][0][0];
+    }
+
+    let replyText = `${translatedMessage || res.success}`;
+    m.reply(replyText, null, m.mentionedJid ? {
+        mentions: conn.parseMention(m.text)
+    } : {});
+};
+
+handler.command = ["simi"];
+handler.tags = ["fun"];
+handler.help = ["simi <pesan>"];
+
+export default handler;

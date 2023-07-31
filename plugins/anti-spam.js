@@ -34,11 +34,11 @@ export async function before(m) {
         const warnMessage = `❌ *Mohon jangan spam!*\nSisa peringatan: ${remainingWarn} lagi`;
     await this.reply(m.chat, warnMessage, m, { mentions: [sender] });
       } else if (warn === 10) {
-        //user.banned = true;
+        user.banned = true;
         user.warn = 0;
         const banMessage = "⛔️ *Anda telah dibanned karena spam!*";
         await this.reply(m.chat, banMessage, m, { mentions: [sender] });
-        //await this.updateBlockStatus(m.sender, "block");
+        await this.updateBlockStatus(m.sender, "block");
       }
     this.spam[sender] = this.spam[sender] || { count: 0, lastTime: 0 };
     return false;

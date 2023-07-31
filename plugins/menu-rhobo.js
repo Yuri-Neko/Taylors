@@ -64,8 +64,12 @@ let arr = [
 ]
 
 if (!arr.includes(tex)) return conn.reply(m.chat, 'Harap Masukan Text\n\n' + arr.split(' '), m)
-	 await conn.sendButton(m.chat, "RESULT", wm, "http://nsfw.rhobot.my.id/" + text, [[' Menu', '/menu']], m, fakefb)
-	 
+try {
+	 const rhobo = "http://nsfw.rhobot.my.id/" + text
+	 await conn.sendFile(m.chat, rhobo, '', '*[ RESULT ]*', m)
+	 } catch (e) {
+	 await m.reply(eror)
+	 }
 }
 handler.help = ['rhobo'].map(v => v + ' <id>')
 handler.tags = ['internet']

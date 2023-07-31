@@ -1,20 +1,46 @@
 import fetch from 'node-fetch'
 import { JSDOM } from 'jsdom'
+
 let handler = async (m, { conn, text }) => {
-let caption = await stylizeText(text ? text : m.quoted && m.quoted.text ? m.quoted.text : m.text)
-let msg = (Object.entries(caption).map(([nama, isi]) => { return { nama, isi } }))
-let listSections = []
-	Object.values(msg).map((v, index) => {
-	listSections.push([' [ ' + ++index + ' ] ' + v.nama, [
-          [v.isi, '', '']
-        ]])
-	})
-	return conn.sendList(m.chat, htki + ' 📺 STYLE 🔎 ' + htka, '⚡ Berikut daftar List Style...\nAkses langsung dengan copy namanya', author, '☂️ Klik Disini ☂️', listSections, m)
+    let teks = text ? text.trim() : m.quoted && m.quoted.text ? m.quoted.text : m.text
+
+    if (teks.includes('|')) {
+        let [nama, urutan] = teks.split('|')
+        if (urutan && /^\d+$/.test(urutan)) {
+            let caption = await stylizeText(nama.trim())
+            let msg = Object.entries(caption).map(([key, value]) => ({ key, value }))
+            let selectedObj = msg[parseInt(urutan) - 1]
+            if (selectedObj) {
+                let list = `🎨 *Gaya Terpilih* 🎨\n\n` +
+                           `🔢 *Nomor:* [${urutan}]\n` +
+                           `📛 *Nama:* ${selectedObj.key}\n` +
+                           `📋 *Isi:* ${selectedObj.value}\n\n` +
+                           `🎉 Nikmati gaya tersebut! 🎉`
+                return m.reply(list)
+            } else {
+                return m.reply('Nomor gaya tidak valid. Silakan coba nomor gaya lain.')
+            }
+        }
+    }
+
+    let caption = await stylizeText(teks)
+    let msg = Object.entries(caption).map(([nama, isi], index) => 
+        `🔢 *Nomor:* [${index + 1}]\n` +
+        `📛 *Nama:* ${nama}\n` +
+        `📋 *Isi:* ${isi}\n\n`
+    );
+    
+    let list = `📜 *Daftar Gaya* 📜\n\n` +
+               `⚡ Berikut adalah daftar gaya yang tersedia:\n\n` +
+               `${msg.join('')}` +
+               `🌟 Pilih gaya dengan menggunakan perintah *style [teks]|[nomor]* 🌟`
+    
+    return m.reply(list)
 }
-handler.help = ['style'].map(v => v + ' <text>')
+
+handler.help = ['style'].map(v => v + ' <teks>')
 handler.tags = ['tools']
 handler.command = /^(style(text)?)$/i
-
 handler.exp = 0
 
 export default handler
@@ -28,7 +54,7 @@ async function stylizeText(text) {
     for (let tr of table) {
         let name = tr.querySelector('.aname').innerHTML
         let content = tr.children[1].textContent.replace(/^\n/, '').replace(/\n$/, '')
-        obj[name + (obj[name] ? ' Reversed' : '')] = content
+        obj[name + (obj[name] ? ' Terbalik' : '')] = content
     }
     return obj
 }
