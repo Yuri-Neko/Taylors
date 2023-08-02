@@ -34,7 +34,7 @@ conn.quransData = conn.quransData ? conn.quransData : {};
 
   let { key } = await m.reply(`📖 List of Ayahs in Surah ${surahNumber}:\n${formattedList}\n\n${instructions}`);
   // Store the Quran data in conn.quransData variable for later use
-  conn.quransData[m.chat] = { list: Object.values(ayahs), key, timeout: setTimeout(() => { conn.sendMessage(m.chat, { delete: key }); delete conn.quransData[m.chat]; }, 1000)};
+  conn.quransData[m.chat] = { list: Object.values(ayahs), key, timeout: setTimeout(() => { conn.sendMessage(m.chat, { delete: key }); delete conn.quransData[m.chat]; }, 1000 * 60)};
 };
 
 handler.before = async (m, { conn }) => {
@@ -62,7 +62,7 @@ if (m.isBaileys || !(m.chat in conn.quransData)) return;
       filename: "quran_audio.mp3",
       ptt: true,
     }, { quoted: m });
-
+    conn.sendMessage(m.chat, { delete: key });
     clearTimeout(conn.quransData[m.chat].timeout);
     delete conn.quransData[m.chat];
   }

@@ -1,109 +1,80 @@
 const handler = async (m, {
     conn,
     usedPrefix,
+    command,
     args
 }) => {
-if (global.db.data.chats[m.chat]?.simi) return m.reply("Matikan fitur *SIMI* terlebih dahulu\nKetik *SIMI STOP*")
-    conn.optionsData = conn.optionsData ? conn.optionsData : {}
+    if (global.db.data.chats[m.chat]?.simi) return m.reply("Matikan fitur *SIMI* terlebih dahulu. Ketik *SIMI STOP*")
 
-    const idop = [
-        "antiCall", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel",
+    const features = [
+        "antiCall", "antiDelete", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel",
         "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic",
         "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory",
         "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews",
-        "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly"
-    ]
+        "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly", "lastAnime", "latestNews"
+    ];
 
-    const namop = idop.map(id => id.charAt(0).toUpperCase() + id.slice(1)).map(name => name.split(/(?=[A-Z])/).join(' '))
-    const desop = idop.map(id => `Mengaktifkan atau menonaktifkan fitur *${id.toUpperCase()}*`)
+    const index = parseInt(args[0]) - 1;
 
-    if (args[0] && !isNaN(args[0])) {
-        const choice = args[0].trim()
-        const numChoice = Number(choice)
+    if (!command || !["on", "off", "enable", "disable"].includes(command) || isNaN(index) || index < 0 || index >= features.length) {
+        const featureList = features.map((feature, idx) => {
+            const currentValue = global.db.data.chats[m.chat]?.[feature];
+            const status = currentValue ? "✅ Aktif" : "❌ Nonaktif";
+            return `*${idx + 1}.* ${feature} - ${status}`;
+        }).join('\n');
+        return m.reply(`
+⚠️ *Gunakan format yang benar* ⚠️
 
-        if (numChoice >= 1 && numChoice <= idop.length) {
-            const optionId = idop[numChoice - 1]
+📜 *List Fitur*:
+${featureList}
+        
+*Contoh Penggunaan*:
+*${usedPrefix}on 1* atau *${usedPrefix}off 1*
+        `);
+    }
 
-            const isEnable = !global.db.data.chats[m.chat][optionId]
-            global.db.data.chats[m.chat][optionId] = isEnable
+    const feature = features[index];
 
-            const statusText = isEnable ? "✅ diaktifkan" : "❌ dinonaktifkan"
-
-            // Reverse the true/false values for specified options
-            const reverseOptions = ["detect", "getmsg", "lastAnime", "latestNews"]
-            if (reverseOptions.includes(optionId)) {
-                global.db.data.chats[m.chat][optionId] = !global.db.data.chats[m.chat][optionId]
+    if (["on", "enable"].includes(command)) {
+        if (["antiDelete", "detect", "getmsg", "lastAnime", "latestNews"].includes(feature)) {
+            if (global.db.data.chats[m.chat]?.[feature]) {
+                return m.reply(`❗ Fitur *${feature}* sudah aktif ❗`);
             }
-
-            await conn.reply(m.chat, `✨ Fitur *${optionId.toUpperCase()}* telah *${statusText}*.`, m)
+            global.db.data.chats[m.chat][feature] = true;
+            const status = global.db.data.chats[m.chat]?.[feature] ? "Aktif ✅" : "Nonaktif ❌";
+            return m.reply(`✅ Fitur *${feature}* berhasil diaktifkan. Status: ${status}`);
         } else {
-            await conn.reply(m.chat, "❗ Pilihan tidak valid.", m)
-        }
-    } else {
-        const teks = idop.map((id, i) => {
-            const status = global.db.data.chats[m.chat][id] ? "✅ Sudah aktif" : "❌ Belum aktif"
-            return `*${i + 1}.* ${namop[i]}\n${desop[i]}\nStatus: ${status}`
-        }).join("\n\n")
-
-        const {
-            key
-        } = await conn.reply(m.chat, `🔧 Daftar Opsi:\n\n${teks}\n\nBalas pesan ini dengan nomor fitur yang ingin diaktifkan atau dinonaktifkan.`, m)
-        conn.optionsData[m.chat] = {
-            idop,
-            key,
-            timeout: setTimeout(() => {
-                conn.sendMessage(m.chat, {
-                    delete: key
-                })
-                delete conn.optionsData[m.chat]
-            }, 60 * 1000)
+            if (!global.db.data.chats[m.chat]?.[feature]) {
+                return m.reply(`❗ Fitur *${feature}* sudah nonaktif ❗`);
+            }
+            global.db.data.chats[m.chat][feature] = false;
+            const status = global.db.data.chats[m.chat]?.[feature] ? "Aktif ✅" : "Nonaktif ❌";
+            return m.reply(`❌ Fitur *${feature}* berhasil dinonaktifkan. Status: ${status}`);
         }
     }
-}
 
-handler.before = async (m, {
-    conn
-}) => {
-    conn.optionsData = conn.optionsData ? conn.optionsData : {}
-
-    if (m.isBaileys || !(m.chat in conn.optionsData)) return
-
-    const {
-        timeout,
-        idop,
-        key
-    } = conn.optionsData[m.chat]
-    if (!m.quoted || m.quoted.id !== key.id || !m.text) return
-
-    const choice = m.text.trim()
-    const numChoice = Number(choice)
-
-    if (!isNaN(numChoice) && numChoice >= 1 && numChoice <= idop.length) {
-        const optionId = idop[numChoice - 1]
-
-        const isEnable = !global.db.data.chats[m.chat][optionId]
-        global.db.data.chats[m.chat][optionId] = isEnable
-
-        const statusText = isEnable ? "✅ diaktifkan" : "❌ dinonaktifkan"
-
-        // Reverse the true/false values for specified options
-        const reverseOptions = ["detect", "getmsg", "lastAnime", "latestNews"]
-        if (reverseOptions.includes(optionId)) {
-            global.db.data.chats[m.chat][optionId] = !global.db.data.chats[m.chat][optionId]
+    if (["off", "disable"].includes(command)) {
+        if (["antiDelete", "detect", "getmsg", "lastAnime", "latestNews"].includes(feature)) {
+            if (!global.db.data.chats[m.chat]?.[feature]) {
+                return m.reply(`❗ Fitur *${feature}* sudah nonaktif ❗`);
+            }
+            global.db.data.chats[m.chat][feature] = false;
+            const status = global.db.data.chats[m.chat]?.[feature] ? "Aktif ✅" : "Nonaktif ❌";
+            return m.reply(`❌ Fitur *${feature}* berhasil dinonaktifkan. Status: ${status}`);
+        } else {
+            if (global.db.data.chats[m.chat]?.[feature]) {
+                return m.reply(`❗ Fitur *${feature}* sudah aktif ❗`);
+            }
+            global.db.data.chats[m.chat][feature] = true;
+            const status = global.db.data.chats[m.chat]?.[feature] ? "Aktif ✅" : "Nonaktif ❌";
+            return m.reply(`✅ Fitur *${feature}* berhasil diaktifkan. Status: ${status}`);
         }
-
-        conn.reply(m.chat, `✨ Fitur *${optionId.toUpperCase()}* telah *${statusText}*.`, m)
-        conn.sendMessage(m.chat, {
-                    delete: key
-                })
-        clearTimeout(timeout)
-        delete conn.optionsData[m.chat]
     }
-}
+};
 
-handler.help = ["options", "setting"]
-handler.tags = ["main"]
-handler.command = /^(options|setting|opt)$/i
-handler.limit = true
+handler.help = ["on", "off"];
+handler.tags = ["main"];
+handler.command = /^(on|off|enable|disable)$/i;
+handler.limit = true;
 
-export default handler
+export default handler;
