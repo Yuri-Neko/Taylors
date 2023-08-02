@@ -1,48 +1,46 @@
+// Impor modul untuk mengatur waktu
+import { performance } from 'perf_hooks';
+
 export async function before(m) {
   this.spam = this.spam || {};
   const chat = global.db.data.chats[m.chat];
+  const senderId = m.sender;
+
+  // Inisialisasi data spam sender jika belum ada
+  this.spam[senderId] = this.spam[senderId] || {
+    count: 0,
+    lastMsgTime: 0,
+    isSpam: false,
+    cooldownEndTime: 0
+  };
+
+  const now = performance.now();
+  const timeDifference = now - this.spam[senderId].lastMsgTime;
 
   if (chat.antiSpam && !m.isBaileys) {
-  const sender = m.sender;
-    const user = global.db.data.users[sender];
-  const spamLimit = 3; // Batas pesan yang sama dari pengirim sebelum dianggap spam
-  const spamTimeLimit = 3000; // Batas waktu cooldown dalam milidetik (dalam hal ini 3000ms = 3 detik)
-
-  this.spam[sender] = this.spam[sender] || { count: 0, lastTime: 0 };
-  const { count, lastTime } = this.spam[sender];
-
-  const now = Date.now();
-  if (now - lastTime <= spamTimeLimit) {
-    if (count >= spamLimit) {
-      const cooldownTime = (spamTimeLimit - (now - lastTime)) / 1000;
-      const waitMessage = `⏳ *Cooldown*\nTunggu setelah ${cooldownTime.toFixed(1)} detik`;
-      await this.reply(m.chat, waitMessage, m, { mentions: [sender] });
-      return false;
-    } else {
-      this.spam[sender].count++;
+    if (this.spam[senderId].isSpam && now < this.spam[senderId].cooldownEndTime) {
+      const remainingCooldown = Math.ceil((this.spam[senderId].cooldownEndTime - now) / 1000);
+      m.reply(`⏳ Mohon tunggu *${remainingCooldown} detik* sebelum mengirim pesan lagi.`);
+      return;
     }
-  } else {
-    this.spam[sender].count = 1;
-    this.spam[sender].lastTime = now;
-  }
 
-  if (count >= spamLimit) {
-  const warn = (user.warn || 0) + 1;
-    if (warn < 10) {
-        user.warn = warn;
-        const remainingWarn = 10 - warn;
-        const warnMessage = `❌ *Mohon jangan spam!*\nSisa peringatan: ${remainingWarn} lagi`;
-    await this.reply(m.chat, warnMessage, m, { mentions: [sender] });
-      } else if (warn === 10) {
-        user.banned = true;
-        user.warn = 0;
-        const banMessage = "⛔️ *Anda telah dibanned karena spam!*";
-        await this.reply(m.chat, banMessage, m, { mentions: [sender] });
-        await this.updateBlockStatus(m.sender, "block");
-      }
-    this.spam[sender] = this.spam[sender] || { count: 0, lastTime: 0 };
-    return false;
+    this.spam[senderId].count++;
+    this.spam[senderId].lastMsgTime = now;
+
+    if (this.spam[senderId].count >= 5 && timeDifference < 5000) {
+      chat.isBanned = true;
+      this.spam[senderId].isSpam = true;
+      this.spam[senderId].cooldownEndTime = now + 5000;
+      const remainingCooldown = Math.ceil((this.spam[senderId].cooldownEndTime - now) / 1000);
+
+      setTimeout(() => {
+        chat.isBanned = false;
+        this.spam[senderId].isSpam = false;
+        m.reply(`⏳ Cooldown selesai. Anda bisa mengirim pesan lagi.`);
+      }, 5000);
+
+      this.spam[senderId].count = 0;
+      m.reply(`🚫 *Anda telah melakukan spam dalam chat.* Mohon tunggu *${remainingCooldown} detik* sebelum mengirim pesan lagi.`);
+    }
   }
-  }
-  return true;
 }
