@@ -1,5 +1,5 @@
 const handler = async (m, { conn, usedPrefix, command, args }) => {
-    if (global.db.data.chats[m.chat]?.simi) return m.reply("Matikan fitur *SIMI* terlebih dahulu. Ketik *SIMI STOP*");
+    if (global.db.data.chats[m.chat]?.simi && /^simi$/i.test(args[0])) return m.reply("Matikan fitur *SIMI* terlebih dahulu. Ketik *SIMI OFF*");
 
     const features = ["antiCall", "antiDelete", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel", "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic", "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory", "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews", "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly", "lastAnime", "latestNews"];
 
@@ -21,16 +21,14 @@ const handler = async (m, { conn, usedPrefix, command, args }) => {
     const feature = features[numFeature - 1];
     if (!feature) return m.reply("Fitur tidak ditemukan. Gunakan *help* untuk melihat daftar fitur yang tersedia.");
 
+    const previousStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
     if (/^(antiDelete|detect|getmsg|lastAnime|latestNews|welcome)$/i.test(feature)) {
         global.db.data.chats[m.chat][feature] = !global.db.data.chats[m.chat][feature];
-        const previousStatus = !global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
-        return m.reply(`✨ Fitur *${feature}* telah di${action ? '✅ aktifkan' : '❌ nonaktifkan'}.\nSebelumnya fitur ini ${previousStatus}.`);
     } else {
         global.db.data.chats[m.chat][feature] = action;
     }
-
-    const previousStatus = !global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
-        return m.reply(`✨ Fitur *${feature}* telah di${action ? '✅ aktifkan' : '❌ nonaktifkan'}.\nSebelumnya fitur ini ${previousStatus}.`);
+    const currentStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
+    return m.reply(`✨ Fitur *${feature}* telah di${currentStatus}.\nSebelumnya fitur ini ${previousStatus}.`);
 };
 
 handler.help = ["on", "off"];
