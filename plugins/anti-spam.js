@@ -4,10 +4,8 @@ export async function before(m) {
     const users = global.db.data.users;
     const chats = global.db.data.chats;
 
-    if (!chats[m.chat].antiSpam) return;
-    if (m.isBaileys) return;
-    if (!m.message) return;
-    if (users[m.sender].banned || chats[m.chat].isBanned) return;
+    if (!chats[m.chat].antiSpam || m.isBaileys || m.mtype === 'protocolMessage' || m.mtype === 'pollUpdateMessage' || m.mtype === 'reactionMessage') return;
+    if (!m.msg || !m.message || m.key.remoteJid !== m.sender || users[m.sender].banned || chats[m.chat].isBanned) return;
 
     this.spam = this.spam || {};
     this.spam[m.sender] = this.spam[m.sender] || { count: 0, lastspam: 0 };
@@ -25,7 +23,8 @@ export async function before(m) {
                 this.spam[m.sender].count = 0;
                 m.reply(`✅ *Cooldown selesai*\nAnda bisa mengirim pesan lagi.`);
             }, 5000);
-            return m.reply(`❌ *Mohon jangan spam*\nTunggu setelah ${remainingCooldown} detik`);
+            const message = m.mtype.replace(/message$/i, '').replace('audio', m.msg.ptt ? 'PTT' : 'audio').replace(/^./, v => v.toUpperCase()) || 'Unknown';
+            return m.reply(`❌ *Mohon jangan spam ${message}*\nTunggu setelah ${remainingCooldown} detik`);
         }
     } else {
         this.spam[m.sender].count = 0;
