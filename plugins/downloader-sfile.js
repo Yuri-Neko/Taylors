@@ -32,18 +32,8 @@ let handler = async (m, {
             }).filter(v => v).join("\n\n________________________\n\n")
             await m.reply(teks)
         } else throw 'Input Query / Sfile Url!'
-    } catch {
-        if (!text) throw '*Masukkan link*\n Example: https://sfile.mobi/1FjpfJwHxC07'
-        let json = await (await fetch('https://violetics.pw/api/downloader/sfile?apikey=beta&url=' + text)).json()
-        conn.sendMessage(m.chat, {
-            document: {
-                url: json.result.url
-            },
-            fileName: json.result.title,
-            mimetype: null
-        }, {
-            quoted: m
-        })
+    } catch (e) {
+        m.reply(eror)
     }
 }
 handler.help = ['sfile']
