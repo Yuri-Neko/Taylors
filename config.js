@@ -27,7 +27,6 @@ global.APIs = {
     lolhuman: "https://api.lolhuman.xyz",
     neoxr: "https://api.neoxr.my.id",
     pencarikode: "https://pencarikode.xyz",
-    violetics: "https://violetics.pw",
     xteam: "https://api.xteam.xyz",
     zeks: "https://api.zeks.xyz",
     zenz: "https://api.zahwazein.xyz",
@@ -43,13 +42,12 @@ global.APIKeys = {
     "https://hardianto.xyz": "hardianto",
     "https://melcanz.com": "manHkmst",
     "https://pencarikode.xyz": "pais",
-    "https://violetics.pw": "beta",
     "https://api.zahwazein.xyz": "zenzkey_1ec92f71d3bb",
     "https://api.botcahx.biz.id": "Admin"
 }
 
 /*Lolhuman*/
-global.lolkey = pickRandom(["043c5de3b7cd6b1b8f2a0f90", "e1a815979e6adfc071b7eafc", "ed78c137a46873c5b8e5fe3b", "SGWN"])
+global.lolkey = pickRandom(["043c5de3b7cd6b1b8f2a0f90", "e1a815979e6adfc071b7eafc", "ed78c137a46873c5b8e5fe3b", "BrunoSobrino_2"])
 /*OpenAi*/
 global.openaikey = "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"
 /*AmeApi*/
