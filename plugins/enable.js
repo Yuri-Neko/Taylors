@@ -21,13 +21,16 @@ const handler = async (m, { conn, usedPrefix, command, args }) => {
     const feature = features[numFeature - 1];
     if (!feature) return m.reply("Fitur tidak ditemukan. Gunakan *help* untuk melihat daftar fitur yang tersedia.");
 
-    const previousStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
+    let previousStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
     if (/^(antiDelete|detect|getmsg|lastAnime|latestNews|welcome)$/i.test(feature)) {
         global.db.data.chats[m.chat][feature] = !global.db.data.chats[m.chat][feature];
     } else {
         global.db.data.chats[m.chat][feature] = action;
     }
     const currentStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
+    if (/^(antiDelete|detect|getmsg|lastAnime|latestNews|welcome)$/i.test(feature)) {
+        previousStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
+    }
     return m.reply(`✨ Fitur *${feature}* telah di${currentStatus}.\nSebelumnya fitur ini ${previousStatus}.`);
 };
 
