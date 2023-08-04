@@ -5,7 +5,7 @@ export async function before(m) {
     const chats = global.db.data.chats;
 
     if (!chats[m.chat].antiSpam || m.isBaileys || m.mtype === 'protocolMessage' || m.mtype === 'pollUpdateMessage' || m.mtype === 'reactionMessage') return;
-    if (!m.msg || !m.message || m.key.remoteJid !== m.sender || users[m.sender].banned || chats[m.chat].isBanned) return;
+    if (!m.msg || !m.message || m.key.remoteJid !== m.chat || users[m.sender].banned || chats[m.chat].isBanned) return;
 
     this.spam = this.spam || {};
     this.spam[m.sender] = this.spam[m.sender] || { count: 0, lastspam: 0 };

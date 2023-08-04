@@ -1,90 +1,70 @@
-import cheerio from "cheerio";
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
 
-let handler = async (m, {
-    conn,
-    args,
-    usedPrefix,
-    text,
-    command
-}) => {
+const fetchStickers = async (query) => {
+  const url = `https://api.telegram.org/bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4/getStickerSet?name=${encodeURIComponent(query)}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    const stickers = data.result.stickers;
 
-    let lister = [
-        "search",
-        "random"
-    ]
+    const stickerRequests = await Promise.all(stickers.map(async (sticker) => {
+      const fileResponse = await fetch(`https://api.telegram.org/bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4/getFile?file_id=${sticker.file_id}`);
+      const fileData = await fileResponse.json();
 
-    let [feature, inputs, inputs_, inputs__, inputs___] = text.split("|")
-    if (!lister.includes(feature)) return m.reply("*Example:*\n" + usedPrefix + command + " search|vpn\n\n*Pilih type yg ada*\n" + lister.map((v, index) => "  ○ " + v).join("\n"))
+      return {
+        file_id: sticker.file_id,
+        url: `https://api.telegram.org/file/bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4/${fileData.result.file_path}`,
+      };
+    }));
 
-    if (lister.includes(feature)) {
+    return stickerRequests;
+  } catch (error) {
+    throw new Error('Terjadi kesalahan saat mengambil stiker.');
+  }
+};
 
-        if (feature == "search") {
-            if (!inputs) return m.reply("Input query link\nExample: " + usedPrefix + command + " search|vpn")
-            await m.reply(wait)
-            try {
-                
-                if (isNumber(inputs_)) {
-                let array = await Telesticker(inputs)
-                if (inputs_ > array.length) {
-  let maxi = `Input terlalu banyak, usahakan dibawah ${array.length}`
-  await m.reply(maxi)
-} else {
-                let randomItem = array[inputs_]
-                await conn.sendFile(m.chat, randomItem.url, "", "", m, null, adReplyS)
-                }
-                } else {
-                let array = await Telesticker(inputs)
-                let teks = array.map((item, index) => {
-                    return `🔍 [ RESULT ${index + 1} ]
+const getRandomSticker = (stickers) => stickers[Math.floor(Math.random() * stickers.length)];
 
-🔗 *url:* ${item.url}
-`
-                }).filter(v => v).join("\n\n________________________\n\n")
-                await m.reply(teks)
-                }
-            } catch (e) {
-                await m.reply(eror)
-            }
-        }
+const handler = async (m, { conn, args, usedPrefix, text, command }) => {
+  const query = text.split('|')[0]?.trim();
+  const count = text.split('|')[1];
 
-        if (feature == "random") {
-        await m.reply(wait)
-            try {
-                let array = await Telesticker(inputs)
-                let randomItem = array[Math.floor(Math.random() * array.length)]
-                await conn.sendFile(m.chat, randomItem.url, "", "", m, null, adReplyS)
-            } catch (e) {
-                await m.reply(eror)
-            }
-        }
+  if (!query) {
+    return m.reply('*❗ Masukan tidak sesuai.*\nGunakan format yang benar: *stickertele [query]* atau *stickertelegram [query]|[angka]* atau *telesticker [query]|all* atau *telegramsticker [query]|random*');
+  }
+
+  try {
+    const stickers = await fetchStickers(query);
+
+    if (!stickers.length) {
+      return m.reply('*❗ Stiker tidak ditemukan.*\nHarap coba dengan nama stiker yang berbeda.');
     }
-}
-handler.help = ['stikertele <query>']
-handler.tags = ['sticker']
-handler.command = /^(stic?kertele(gram)?)$/i
-handler.limit = 1
 
-export default handler
+    if (!count || count.toLowerCase() === 'random') {
+      const randomSticker = getRandomSticker(stickers);
+      return conn.sendFile(m.chat, randomSticker.url, '', `*Stiker Telegram (Acak)*`, m);
+    }
 
+    if (count.toLowerCase() === 'all') {
+      for (let i = 0; i < stickers.length; i++) {
+        await conn.sendFile(m.sender, stickers[i].url, '', `*Stiker Telegram (${i + 1}/${stickers.length})*`, m);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Menunggu 2 detik antara pengiriman stiker
+      }
+    } else {
+      const stickerNumber = parseInt(count) - 1;
+      if (isNaN(stickerNumber) || stickerNumber < 0 || stickerNumber >= stickers.length) {
+        return m.reply('*❗ Nomor stiker tidak valid.*\nHarap berikan nomor stiker yang valid atau gunakan "random" untuk mengirim stiker secara acak atau "all" untuk mendapatkan semua stiker.');
+      }
+      return conn.sendFile(m.chat, stickers[stickerNumber].url, '', `*Stiker Telegram (${stickerNumber + 1}/${stickers.length})*`, m);
+    }
+  } catch (error) {
+    return m.reply('*❗ Terjadi kesalahan saat mengambil stiker.*\nSilakan coba lagi nanti.');
+  }
+};
 
-/* New Line */
-function isNumber(x) {
-    return !isNaN(x)
-}
+handler.help = ['stickertele [query]', 'stickertelegram [query]|[angka]', 'telesticker [query]|all', 'telegramsticker [query]|random'];
+handler.tags = ['stiker'];
+handler.command = /^(stickertele(gram)?|telesticker|telegramsticker)$/i;
+handler.limit = 1;
 
-async function Telesticker(query) {
-  const response = await fetch(`https://api.telegram.org/bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4/getStickerSet?name=${encodeURIComponent(query)}`);
-  const data = await response.json();
-  
-  return Promise.all(data.result.stickers.map(async sticker => {
-    const response2 = await fetch(`https://api.telegram.org/bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4/getFile?file_id=${sticker.thumb.file_id}`);
-    const data2 = await response2.json();
-    
-    return {
-      status: 200,
-      author: "Wudysoft",
-      url: `https://api.telegram.org/file/bot891038791:AAHWB1dQd-vi0IbH2NjKYUk-hqQ8rQuzPD4/${data2.result.file_path}`
-    };
-  }));
-}
+export default handler;
