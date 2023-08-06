@@ -27,11 +27,11 @@ global.__require = function require(dir = import.meta.url) {
 import * as ws from 'ws';
 import {
     readdirSync,
-    rmSync,
     statSync,
     unlinkSync,
     existsSync,
     readFileSync,
+    rmSync,
     watch
 } from 'fs';
 
@@ -48,6 +48,7 @@ import {
 import {
     format
 } from 'util';
+import pino from 'pino';
 import {
     makeWaSocket,
     protoType,
@@ -61,11 +62,22 @@ import {
     mongoDB,
     mongoDBV2
 } from './lib/mongoDB.js';
-import store from './lib/store-single.js';
+
 const {
-    //useSingleFileAuthState,
-    DisconnectReason
-} = (await import('@adiwajshing/baileys')).default
+    DisconnectReason,
+    useMultiFileAuthState,
+    MessageRetryMap,
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore,
+    makeInMemoryStore,
+    proto
+} = await import('@adiwajshing/baileys');
+
+import store from './lib/store-single.js';
+/*
+const logger = pino().child({ level: 'silent', stream: 'store' });
+const store = makeInMemoryStore({ logger });
+*/
 
 const {
     CONNECTING
@@ -123,19 +135,61 @@ global.loadDatabase = async function loadDatabase() {
 }
 loadDatabase()
 
-global.authFile = `${opts._[0] || 'session'}.data.json`
+global.authFile = `TaylorSession`;
 const {
     state,
-    saveState
-} = store.useSingleFileAuthState(global.authFile)
+    saveState,
+    saveCreds
+} = await useMultiFileAuthState(global.authFile);
+const msgRetryCounterMap = (MessageRetryMap) => {};
+const {
+    version
+} = await fetchLatestBaileysVersion();
 
 const connectionOptions = {
     printQRInTerminal: true,
-    auth: state
-}
+    patchMessageBeforeSending: (message) => {
+        const requiresPatch = !!(message.buttonsMessage || message.templateMessage || message.listMessage);
+        if (requiresPatch) {
+            message = {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadataVersion: 2,
+                            deviceListMetadata: {}
+                        },
+                        ...message
+                    }
+                }
+            };
+        }
+        return message;
+    },
+    getMessage: async (key) => {
+        if (store) {
+            const msg = await store.loadMessage(key.remoteJid, key.id);
+            return conn.chats[key.remoteJid] && conn.chats[key.remoteJid].messages[key.id] ? conn.chats[key.remoteJid].messages[key.id].message : undefined;
+        }
+        return proto.Message.fromObject({});
+    },
+    msgRetryCounterMap,
+    logger: pino({
+        level: 'silent'
+    }),
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pino({
+            level: 'silent'
+        })),
+    },
+    browser: ['TaylorBot', 'Safari', '1.0.0'],
+    version,
+    defaultQueryTimeoutMs: undefined,
+};
 
-global.conn = makeWaSocket(connectionOptions)
+global.conn = makeWaSocket(connectionOptions);
 conn.isInit = false
+
 
 if (!opts['test']) {
     setInterval(async () => {
@@ -152,15 +206,67 @@ if (!opts['test']) {
 if (opts['server'])(await import('./server.js')).default(global.conn, PORT)
 
 /* Clear */
-async function clearTmp() {
-    const tmp = './tmp'
-    readdirSync(tmp).forEach(f => rmSync(`${tmp}/${f}`));
+function clearTmp() {
+    const tmp = [tmpdir(), join(__dirname, './tmp')];
+    const filename = [];
+    tmp.forEach((dirname) => readdirSync(dirname).forEach((file) => filename.push(join(dirname, file))));
+    return filename.map((file) => {
+        const stats = statSync(file);
+        if (stats.isFile() && (Date.now() - stats.mtimeMs >= 1000 * 60 * 3)) return unlinkSync(file); // 3 minutes
+        return false;
+    });
 }
-setInterval(async () => {
-    await clearTmp();
-    console.log(chalk.cyanBright('The tmp folder has been cleaned'));
-}, 3600000);
-// Tiap 1 jam
+
+function purgeSession() {
+    let prekey = [];
+    const directorio = readdirSync('./TaylorSession');
+    const filesFolderPreKeys = directorio.filter((file) => {
+        return file.startsWith('pre-key-');
+    });
+    prekey = [...prekey, ...filesFolderPreKeys];
+    filesFolderPreKeys.forEach((files) => {
+        unlinkSync(`./TaylorSession/${files}`);
+    });
+}
+
+function purgeSessionSB() {
+    const listaDirectorios = readdirSync('./jadibot/');
+    let SBprekey = [];
+    listaDirectorios.forEach((filesInDir) => {
+        const directorio = readdirSync(`./jadibot/${filesInDir}`);
+        const DSBPreKeys = directorio.filter((fileInDir) => {
+            return fileInDir.startsWith('pre-key-');
+        });
+        SBprekey = [...SBprekey, ...DSBPreKeys];
+        DSBPreKeys.forEach((fileInDir) => {
+            unlinkSync(`./jadibot/${filesInDir}/${fileInDir}`);
+        });
+    });
+}
+
+function purgeOldFiles() {
+    const directories = ['./TaylorSession/', './jadibot/'];
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    directories.forEach((dir) => {
+        readdirSync(dir, (err, files) => {
+            if (err) throw err;
+            files.forEach((file) => {
+                const filePath = path.join(dir, file);
+                stat(filePath, (err, stats) => {
+                    if (err) throw err;
+                    if (stats.isFile() && stats.mtimeMs < oneHourAgo && file !== 'creds.json') {
+                        unlinkSync(filePath, (err) => {
+                            if (err) throw err;
+        console.log(`Berkas ${file} berhasil dihapus`);
+    });
+} else {
+    console.log(`Berkas ${file} tidak dihapus`);
+}
+                });
+            });
+        });
+    });
+}
 
 /* Update */
 async function connectionUpdate(update) {
@@ -168,20 +274,23 @@ async function connectionUpdate(update) {
         connection,
         lastDisconnect,
         isNewLogin
-    } = update
-    if (isNewLogin) conn.isInit = true
-    const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
-    if (code && code !== DisconnectReason.loggedOut && conn?.ws.readyState !== CONNECTING) {
-        console.log(await global.reloadHandler(true).catch(console.error))
-        global.timestamp.connect = new Date
+    } = update;
+    global.stopped = connection;
+    if (isNewLogin) conn.isInit = true;
+    const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode;
+    if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
+        console.log(await global.reloadHandler(true).catch(console.error));
+        global.timestamp.connect = new Date;
     }
-    if (global.db.data == null) loadDatabase()
-    if (connection === 'open') {
-        const authorText = `Made by ${author}`;
-        const lineLength = authorText.length + 6;
-        const line = '─'.repeat(lineLength);
-
-        console.log(chalk.yellow(`╭${line}╮\n│  ${authorText}  │\n╰${line}╯`));
+    if (global.db.data == null) loadDatabase();
+    if (update.qr != 0 && update.qr != undefined) {
+        console.log(chalk.yellow('🚩ㅤPindai kode QR ini, kode QR akan kedaluwarsa dalam 60 detik.'));
+    }
+    if (connection == 'open') {
+        console.log(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
+    }
+    if (connection == 'close') {
+        console.log(chalk.yellow('🚩ㅤKoneksi ditutup, silakan pindai kode QR ini lagi.'));
     }
 }
 
@@ -192,29 +301,30 @@ let isInit = true
 let handler = await import('./handler.js')
 global.reloadHandler = async function(restatConn) {
     try {
-        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error)
-        if (Object.keys(Handler || {}).length) handler = Handler
+        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
+        if (Object.keys(Handler || {}).length) handler = Handler;
     } catch (e) {
-        console.error(e)
+        console.error(e);
     }
     if (restatConn) {
-        const oldChats = global.conn.chats
+        const oldChats = global.conn.chats;
         try {
-            global.conn.ws.close()
+            global.conn.ws.close();
         } catch {}
-        conn.ev.removeAllListeners()
-        global.conn = makeWASocket(connectionOptions, {
+        conn.ev.removeAllListeners();
+        global.conn = makeWaSocket(connectionOptions, {
             chats: oldChats
-        })
-        isInit = true
+        });
+        isInit = true;
     }
     if (!isInit) {
-        conn.ev.off('messages.upsert', conn.handler)
-        conn.ev.off('group-participants.update', conn.participantsUpdate)
-        conn.ev.off('groups.update', conn.groupsUpdate)
-        conn.ev.off('message.delete', conn.onDelete)
-        conn.ev.off('connection.update', conn.connectionUpdate)
-        conn.ev.off('creds.update', conn.credsUpdate)
+        conn.ev.off('messages.upsert', conn.handler);
+        conn.ev.off('messages.update', conn.pollUpdate);
+        conn.ev.off('group-participants.update', conn.participantsUpdate);
+        conn.ev.off('groups.update', conn.groupsUpdate);
+        conn.ev.off('message.delete', conn.onDelete);
+        conn.ev.off('connection.update', conn.connectionUpdate);
+        conn.ev.off('creds.update', conn.credsUpdate);
     }
 
     const emoji = {
@@ -245,66 +355,78 @@ global.reloadHandler = async function(restatConn) {
     conn.sRestrictOn = `${emoji.restrictOn} Edit Info Grup diubah ke hanya admin!`;
     conn.sRestrictOff = `${emoji.restrictOff} Edit Info Grup diubah ke semua peserta!`;
 
-    conn.handler = handler.handler.bind(global.conn)
-    conn.participantsUpdate = handler.participantsUpdate.bind(global.conn)
-    conn.groupsUpdate = handler.groupsUpdate.bind(global.conn)
-    conn.onDelete = handler.deleteUpdate.bind(global.conn)
-    conn.connectionUpdate = connectionUpdate.bind(global.conn)
-    conn.credsUpdate = saveState.bind(global.conn, true)
+    conn.handler = handler.handler.bind(global.conn);
+    conn.pollUpdate = handler.pollUpdate.bind(global.conn);
+    conn.participantsUpdate = handler.participantsUpdate.bind(global.conn);
+    conn.groupsUpdate = handler.groupsUpdate.bind(global.conn);
+    conn.onDelete = handler.deleteUpdate.bind(global.conn);
+    conn.connectionUpdate = connectionUpdate.bind(global.conn);
+    conn.credsUpdate = saveCreds.bind(global.conn, true);
 
-    conn.ev.on('messages.upsert', conn.handler)
-    conn.ev.on('group-participants.update', conn.participantsUpdate)
-    conn.ev.on('groups.update', conn.groupsUpdate)
-    conn.ev.on('message.delete', conn.onDelete)
-    conn.ev.on('connection.update', conn.connectionUpdate)
-    conn.ev.on('creds.update', conn.credsUpdate)
+    const currentDateTime = new Date();
+    const messageDateTime = new Date(conn.ev);
+    if (currentDateTime >= messageDateTime) {
+        const chats = Object.entries(conn.chats).filter(([jid, chat]) => !jid.endsWith('@g.us') && chat.isChats).map((v) => v[0]);
+    } else {
+        const chats = Object.entries(conn.chats).filter(([jid, chat]) => !jid.endsWith('@g.us') && chat.isChats).map((v) => v[0]);
+    }
 
-    isInit = false
-    return true
-}
+    conn.ev.on('messages.upsert', conn.handler);
+    conn.ev.on("messages.update", conn.pollUpdate);
+    conn.ev.on('group-participants.update', conn.participantsUpdate);
+    conn.ev.on('groups.update', conn.groupsUpdate);
+    conn.ev.on('message.delete', conn.onDelete);
+    conn.ev.on('connection.update', conn.connectionUpdate);
+    conn.ev.on('creds.update', conn.credsUpdate);
+    isInit = false;
+    return true;
+};
 
-const pluginFolder = global.__dirname(join(__dirname, './plugins/index'))
-const pluginFilter = filename => /\.js$/.test(filename)
-global.plugins = {}
+const pluginFolder = global.__dirname(join(__dirname, './plugins/index'));
+const pluginFilter = (filename) => /\.js$/.test(filename);
+global.plugins = {};
 async function filesInit() {
-    for (let filename of readdirSync(pluginFolder).filter(pluginFilter)) {
+    for (const filename of readdirSync(pluginFolder).filter(pluginFilter)) {
         try {
-            let file = global.__filename(join(pluginFolder, filename))
-            const module = await import(file)
-            global.plugins[filename] = module.default || module
+            const file = global.__filename(join(pluginFolder, filename));
+            const module = await import(file);
+            global.plugins[filename] = module.default || module;
         } catch (e) {
-            conn.logger.error(e)
-            delete global.plugins[filename]
+            conn.logger.error(e);
+            delete global.plugins[filename];
         }
     }
 }
-filesInit().then(_ => console.log(Object.keys(global.plugins))).catch(console.error)
+filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
 
 global.reload = async (_ev, filename) => {
     if (pluginFilter(filename)) {
-        let dir = global.__filename(join(pluginFolder, filename), true)
+        const dir = global.__filename(join(pluginFolder, filename), true);
         if (filename in global.plugins) {
-            if (existsSync(dir)) conn.logger.info(` updated plugin - '${filename}'`)
+            if (existsSync(dir)) conn.logger.info(` updated plugin - '${filename}'`);
             else {
-                conn.logger.warn(`deleted plugin - '${filename}'`)
-                return delete global.plugins[filename]
+                conn.logger.warn(`deleted plugin - '${filename}'`);
+                return delete global.plugins[filename];
             }
-        } else conn.logger.info(`new plugin - '${filename}'`)
-        let err = syntaxerror(readFileSync(dir), filename, {
+        } else conn.logger.info(`new plugin - '${filename}'`);
+        const err = syntaxerror(readFileSync(dir), filename, {
             sourceType: 'module',
-            allowAwaitOutsideFunction: true
-        })
-        if (err) conn.logger.error(`syntax error while loading '${filename}'\n${format(err)}`)
-        else try {
-            const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`))
-            global.plugins[filename] = module.default || module
-        } catch (e) {
-            conn.logger.error(`error require plugin '${filename}\n${format(e)}'`)
-        } finally {
-            global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)))
+            allowAwaitOutsideFunction: true,
+        });
+        if (err) conn.logger.error(`syntax error while loading '${filename}'\n${format(err)}`);
+        else {
+            try {
+                const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
+                global.plugins[filename] = module.default || module;
+            } catch (e) {
+                conn.logger.error(`error require plugin '${filename}\n${format(e)}'`);
+            } finally {
+                global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
+            }
         }
     }
-}
+};
+
 Object.freeze(global.reload)
 watch(pluginFolder, global.reload)
 await global.reloadHandler()

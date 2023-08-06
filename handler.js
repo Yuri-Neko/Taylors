@@ -34,6 +34,10 @@ const delay = ms => isNumber(ms) && new Promise(resolve => setTimeout(function()
  * Handle messages upsert
  * @param {import("@adiwajshing/baileys").BaileysEventMap<unknown>["messages.upsert"]} groupsUpdate 
  */
+ const {
+    getAggregateVotesInPollMessage
+} = await import('@adiwajshing/baileys');
+
 export async function handler(chatUpdate) {
     this.msgqueque = this.msgqueque || []
     if (!chatUpdate)
@@ -1456,7 +1460,7 @@ export async function deleteUpdate(message) {
         if (chat.antiDelete)
             return
         this.sendMessage(msg.key.remoteJid, {
-            text: `❗ Terdeteksi *@${participant.split`@`[0]}* telah menghapus pesan.\nUntuk mematikan fitur ini, ketik\n*.off antidelete*\n\nUntuk menghapus pesan yang dikirim BOT, reply pesan dengan perintah\n*.delete*`,
+            text: `❗ Terdeteksi @${participant.split`@`[0]} telah menghapus pesan.\nUntuk mematikan fitur ini, ketik\n*.off antidelete*\n\nUntuk menghapus pesan yang dikirim BOT, reply pesan dengan perintah\n*.delete*`,
             mentions: [participant]
         }, {
             quoted: msg
@@ -1465,6 +1469,30 @@ export async function deleteUpdate(message) {
     } catch (e) {
         console.error(e)
     }
+}
+
+/*
+ Polling Update 
+*/
+export async function pollUpdate(chatUpdate) {
+  for (const { key } of chatUpdate) {
+    if (key.fromMe) {
+      let chats = Object.entries(conn.chats).find(
+        ([user, data]) => data.messages && data.messages[key.id]
+      );
+      if (!chats) return;
+      let msg = JSON.parse(chats[1].messages[key.id]);
+      if (msg) {
+        const pollUpdate = await getAggregateVotesInPollMessage({
+          message: msg.message,
+          pollUpdates: msg.message.pollCreationMessage.options || msg.message.pollCreationMessageV3.options,
+        });
+        var toCmd = pollUpdate.filter((v) => v.name.length !== 0)[0]?.name;
+        if (toCmd == undefined) return;
+        conn.appenTextMessage(msg, toCmd, msg.message);
+      }
+    }
+  }
 }
 
 /**
