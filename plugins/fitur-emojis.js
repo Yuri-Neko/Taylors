@@ -1,117 +1,65 @@
-// ESM
-import { Emojis } from 'dhn-api'
-import got from "got"
-import cheerio from "cheerio"
+import fetch from 'node-fetch';
+import cheerio from 'cheerio';
+import { sticker } from '../lib/sticker.js';
 
-let handler = async (m, { conn, args, usedPrefix }) => {
-    let name = await conn.getName(m.sender)
-    await conn.sendMessage(m.chat, { react: { text: '🗿', key: m.key } })
+async function emojiPedia(emoji) {
+  const response = await fetch(`https://emojipedia.org/${encodeURI(emoji)}`);
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  return $('section.vendor-list > ul > li').map((_, v) => ({
+    vendor: $('h2 a', v).text(),
+    url: `https://emojipedia.org/${$('h2 a', v).attr('href').replace(/^\//, '')}`,
+    image: $('.vendor-image img', v).attr('src').replace('/120/', '/240/'),
+    version: $('.vendor-rollout li', v).map((_, ve) => ({
+      name: $('.version-name a', ve).text(),
+      url: `https://emojipedia.org/${$('.version-name a', ve).attr('href').replace(/^\//, '')}`,
+      image: $('.vendor-image img', ve).attr('data-src').replace('/60/', '/240/'),
+    })).get(),
+  })).get();
+}
 
-    if (!args[0] || args[0].length > 2 || !isEmoji(args[0])) {
-        return m.reply(`Mohon maaf, Anda hanya perlu memasukkan satu emoji saja.\nContoh penggunaan: *${usedPrefix}emoji 😊*`)
+let handler = async (m, { args, usedPrefix, command }) => {
+  
+  if (!args[0]) return m.reply('Silakan masukkan *emoji* atau perintah yang benar.');
+
+  try {
+    const emojiData = await emojiPedia(args[0]);
+    if (!emojiData.length) return m.reply('Emoji tidak ditemukan atau input tidak valid. Silakan coba lagi.');
+
+    if (!args[1]) {
+      const vendorsList = emojiData.map((data, index) => `*${index + 1}.* ${data.vendor}`);
+      return m.reply(`Daftar vendor untuk *${args[0]}*:\n\n${vendorsList.join('\n')}\n\nContoh: *${usedPrefix + command}* [emoji] [vendor] [version]`);
     }
 
-    try {
-        let cari = await Emojis(args[0])
-        let listMessages = []
+    const vendorIndex = parseInt(args[1]) - 1;
+    if (isNaN(vendorIndex) || vendorIndex < 0 || vendorIndex >= emojiData.length) return m.reply(`Indeks vendor tidak valid. Harap berikan nomor yang valid dari angka 1 sampai ${emojiData.length}.`);
 
-        if (args[1]) {
-            let index = parseInt(args[1])
-            if (isNaN(index) || index < 0 || index >= Object.values(cari.vendor_pack).length) {
-                let vendorList = Object.values(cari.vendor_pack).map((v, i) => {
-                    let url = v.vendor_url
-                    let pairs = url.substring(url.indexOf('/') + 1).split('/');
-                    let vendor = pairs[2].toUpperCase()
-                    return `(${i + 1}) ${vendor} - ${v.vendor_version}`
-                }).join('\n')
-                return m.reply(`Urutan tidak valid. Berikut adalah daftar urutan yang tersedia:\n${vendorList}`)
-            }
-            let v = Object.values(cari.vendor_pack)[index]
-            let url = v.vendor_url
-            let pairs = url.substring(url.indexOf('/') + 1).split('/');
-            let vendor = pairs[2].toUpperCase()
-            listMessages.push(`🎴 *Emoji:* ${cari.unicode_desc}
-🏷️ *Vendor:* ${vendor}
-🔖 *Versi Vendor:* ${v.vendor_version}
-📄 *Cara Pakai:* ${usedPrefix}fetchsticker ${v.vendor_thumb.replace('/60/', '/240/')} wsf`)
-            m.reply(listMessages.join('\n'))
-        } else {
-            Object.values(cari.vendor_pack).map((v, index) => {
-                let url = v.vendor_url
-                let pairs = url.substring(url.indexOf('/') + 1).split('/');
-                let vendor = pairs[2].toUpperCase()
-                listMessages.push(`🎴 *Emoji:* ${cari.unicode_desc}
-🏷️ *Vendor:* ${vendor}
-🔖 *Versi Vendor:* ${v.vendor_version}
-📄 *Cara Pakai:* ${usedPrefix}fetchsticker ${v.vendor_thumb.replace('/60/', '/240/')} wsf`)
-            })
-            m.reply(listMessages.join('\n\n'))
-        }
-    } catch (e) {
-        let cari = await semoji(args[0])
-        let listMessages = []
+    const vendorData = emojiData[vendorIndex];
 
-        if (args[1]) {
-            let index = parseInt(args[1])
-            if (isNaN(index) || index < 0 || index >= cari.length) {
-                let emojiList = cari.map((v, i) => `(${i + 1}) ${v.nama}`).join('\n')
-                return m.reply(`Urutan tidak valid. Berikut adalah daftar emoji yang tersedia:\n${emojiList}`)
-            }
-            let v = cari[index]
-            listMessages.push(`🎴 *Emoji:* ${v.nama}
-📄 *Cara Pakai:* ${usedPrefix}fetchsticker ${v.url} wsf`)
-            m.reply(listMessages.join('\n'))
-        } else {
-            if (!Array.isArray(cari) || cari.length === 0) {
-                return m.reply('Mohon maaf, emoji tidak ditemukan atau tidak valid.')
-            }
-
-            cari.forEach((v, index) => {
-                listMessages.push(`🎴 *Emoji:* ${v.nama}
-📄 *Cara Pakai:* ${usedPrefix}fetchsticker ${v.url} wsf`)
-            })
-
-            if (listMessages.length === 0) {
-                return m.reply('Mohon maaf, tidak ada emoji yang ditemukan untuk input tersebut.')
-            }
-
-            m.reply(listMessages.join('\n\n'))
-        }
+    if (!args[2]) {
+      if (vendorData.url) {
+        m.reply(`Informasi emoji untuk *${args[0]}* (${vendorData.vendor}):\n\nURL: ${vendorData.url}\nGambar: ${vendorData.image}`);
+        return m.reply(await sticker(false, vendorData.image, packname, m.name));
+      } else {
+        return m.reply('eror');
+      }
+      const versionsList = vendorData.version.map((version, index) => `${index + 1}. ${version.name}`);
+      return m.reply(`Daftar versi untuk *${args[0]}* (${vendorData.vendor}):\n\n${versionsList.join('\n')}\n\nContoh: ${usedPrefix + command} [emoji] [vendor] [version]`);
     }
-}
 
-handler.help = ['emoji']
-handler.tags = ['sticker']
-handler.command = /^(emo(jis|(ji)?)|se?moji)$/i
-export default handler
+    const versionIndex = parseInt(args[2]) - 1;
+    if (isNaN(versionIndex) || versionIndex < 0 || versionIndex >= vendorData.version.length) return m.reply(`Indeks versi tidak valid. Harap berikan nomor yang valid dari angka 1 sampai ${vendorData.version.length}.`);
 
-async function semoji(hem) {
-    const result = []
-    const data = await got(encodeURI('https://emojipedia.org/' + hem), {
-        method: "GET",
-        headers: {
-            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36"
-        }
-    })
-    const $ = cheerio.load(data.body)
-    $("body > div.container > div.content > article > section.vendor-list > ul").each(function (asu, chuwi) {
-        $(chuwi).find("li").each(function (sa, na) {
-            const res = {
-                nama: $(na).find("div > div.vendor-info > h2 > a").text().trim().toLowerCase(),
-                url: $(na).find("div > div.vendor-image > img").attr("src")
-            }
-            result.push(res)
-        })
-    })
-    const data2 = []
-    result.map(Data => {
-        if (Data.nama == undefined) return;
-        if (Data.url == undefined) return;
-        data2.push(Data)
-    })
-    return data2
-}
+    const versionData = vendorData.version[versionIndex];
+    m.reply(`Informasi emoji untuk *${args[0]}* (${vendorData.vendor} - ${versionData.name}):\n\nURL: ${versionData.url}\nGambar: ${versionData.image}`);
+    return m.reply(await sticker(false, versionData.image, packname, m.name));
+  } catch (error) {
+    console.error('Error fetching or parsing data:', error);
+    return m.reply('Terjadi kesalahan saat mencari data emoji.');
+  }
+};
 
-function isEmoji(str) {
-    return /[\uD800-\uDFFF]./.test(str)
-}
+handler.help = ['emoji'];
+handler.tags = ['sticker'];
+handler.command = /^(emo(jis|(ji)?)|se?moji)$/i;
+export default handler;
