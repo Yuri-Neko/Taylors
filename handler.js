@@ -37,6 +37,7 @@ const delay = ms => isNumber(ms) && new Promise(resolve => setTimeout(function()
  const {
     getAggregateVotesInPollMessage
 } = await import('@adiwajshing/baileys');
+import store from './lib/store-single.js'
 
 export async function handler(chatUpdate) {
     this.msgqueque = this.msgqueque || []
@@ -1474,26 +1475,53 @@ export async function deleteUpdate(message) {
 /*
  Polling Update 
 */
-export async function pollUpdate(chatUpdate) {
-  for (const { key } of chatUpdate) {
-    if (key.fromMe) {
-      let chats = Object.entries(conn.chats).find(
-        ([user, data]) => data.messages && data.messages[key.id]
-      );
-      if (!chats) return;
-      let msg = JSON.parse(chats[1].messages[key.id]);
-      if (msg) {
-        const pollUpdate = await getAggregateVotesInPollMessage({
-          message: msg.message,
-          pollUpdates: msg.message.pollCreationMessage.options || msg.message.pollCreationMessageV3.options,
-        });
-        var toCmd = pollUpdate.filter((v) => v.name.length !== 0)[0]?.name;
-        if (toCmd == undefined) return;
-        conn.appenTextMessage(msg, toCmd, msg.message);
-      }
+export async function pollUpdate(pollUpdate) {
+  for (const { key, messageTimestamp, pushName, broadcast } of pollUpdate) {
+            if (pollUpdate.pollUpdates) {
+                const pollCreation = await store.loadMessage(key.remoteJid, key.id)
+                if (pollCreation) {
+                    const pollMessage = await getAggregateVotesInPollMessage({
+                        message: pollCreation,
+                        pollUpdates: pollUpdate.pollUpdates,
+                    })
+                    pollUpdate.pollUpdates[0].vote = pollMessage
+                    
+                    console.log(pollMessage)
+                    conn.appenTextMessage(pollUpdate, pollUpdate.pollUpdates[0].vote || pollMessage.filter((v) => v.voters.length !== 0)[0]?.name, pollUpdate.message);
+                }
+            }
+        }
+}
+
+/*
+Update presence
+*/
+export async function presenceUpdate(presenceUpdate) {
+  const id = presenceUpdate.id;
+  const nouser = Object.keys(presenceUpdate.presences);
+  const status = presenceUpdate.presences[nouser]?.lastKnownPresence;
+  const user = global.db.data.users[nouser[0]];
+  
+  if (user?.afk && status === "composing" && user.afk > -1) {
+    if (user.banned) {
+      user.afk = -1;
+      user.afkReason = "User Banned Afk";
+      return;
     }
+    
+    await console.log("AFK - TICK");
+    const username = nouser[0].split("@")[0];
+    const timeAfk = new Date() - user.afk;
+    const caption = `\n@${username} berhenti afk, dia sedang mengetik\n\nAlasan: ${
+      user.afkReason ? user.afkReason : "No Reason"
+    }\nSelama ${timeAfk.toTimeString()} Yang Lalu\n`;
+    
+    this.reply(id, caption, null, { mentions: this.parseMention(caption) });
+    user.afk = -1;
+    user.afkReason = "";
   }
 }
+
 
 /**
 dfail

@@ -48,7 +48,10 @@ import {
 import {
     format
 } from 'util';
-import pino from 'pino';
+import {
+    Boom
+} from "@hapi/boom";
+import Pino from 'pino';
 import {
     makeWaSocket,
     protoType,
@@ -70,14 +73,35 @@ const {
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
     makeInMemoryStore,
-    proto
+    proto,
+    jidNormalizedUser,
+    PHONENUMBER_MCC
 } = await import('@adiwajshing/baileys');
 
-import store from './lib/store-single.js';
-/*
-const logger = pino().child({ level: 'silent', stream: 'store' });
-const store = makeInMemoryStore({ logger });
-*/
+//import store from './lib/store-single.js';
+import readline from "readline"
+import {
+    parsePhoneNumber
+} from "libphonenumber-js"
+const store = makeInMemoryStore({
+    logger: Pino({
+        level: "silent"
+    }).child({
+        level: "store"
+    })
+})
+
+const pairingCode = process.argv.includes("--pairing-code")
+const useMobile = process.argv.includes("--mobile")
+const useQr = process.argv.includes("--qr")
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+})
+const question = (text) => new Promise((resolve) => rl.question(text, resolve))
+import NodeCache from "node-cache"
+const msgRetryCounterCache = new NodeCache() // for retry message, "waiting message"
 
 const {
     CONNECTING
@@ -146,8 +170,35 @@ const {
     version
 } = await fetchLatestBaileysVersion();
 
+if (!pairingCode && !useMobile && !useQr) {
+    const title = "INFO";
+    const message = "Please use one of the options: --pairing-code, --mobile, --qr";
+    const boxWidth = 80;
+    const horizontalLine = chalk.redBright("-".repeat(boxWidth));
+
+    const formatText = (text, bgColor, textColor) => chalk[bgColor](chalk[textColor](text.padStart(boxWidth / 2 + text.length / 2).padEnd(boxWidth)));
+
+    console.log(`+${horizontalLine}+
+|${formatText(title, 'bgRed', 'white')}|
++${horizontalLine}+
+|${formatText(message, 'bgWhite', 'red')}|
++${horizontalLine}+`);
+}
+
 const connectionOptions = {
-    printQRInTerminal: true,
+    ...(!pairingCode && !useMobile && !useQr && {
+        printQRInTerminal: false,
+        mobile: false
+    }),
+    ...(pairingCode && {
+        printQRInTerminal: !pairingCode
+    }),
+    ...(useMobile && {
+        mobile: true
+    }),
+    ...(useQr && {
+        printQRInTerminal: true
+    }),
     patchMessageBeforeSending: (message) => {
         const requiresPatch = !!(message.buttonsMessage || message.templateMessage || message.listMessage);
         if (requiresPatch) {
@@ -165,31 +216,150 @@ const connectionOptions = {
         }
         return message;
     },
-    getMessage: async (key) => {
-        if (store) {
-            const msg = await store.loadMessage(key.remoteJid, key.id);
-            return conn.chats[key.remoteJid] && conn.chats[key.remoteJid].messages[key.id] ? conn.chats[key.remoteJid].messages[key.id].message : undefined;
-        }
-        return proto.Message.fromObject({});
-    },
     msgRetryCounterMap,
-    logger: pino({
+    logger: Pino({
         level: 'silent'
     }),
     auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, pino({
+        keys: makeCacheableSignalKeyStore(state.keys, Pino({
             level: 'silent'
         })),
     },
     browser: ['TaylorBot', 'Safari', '1.0.0'],
     version,
-    defaultQueryTimeoutMs: undefined,
+    generateHighQualityLinkPreview: true, // make high preview link
+    getMessage: async (key) => {
+        let jid = jidNormalizedUser(key.remoteJid)
+        let msg = await store.loadMessage(jid, key.id)
+
+        return msg?.message || ""
+    },
+    msgRetryCounterCache, // Resolve waiting messages
+    defaultQueryTimeoutMs: undefined, // for this issues https://github.com/WhiskeySockets/Baileys/issues/276
 };
 
 global.conn = makeWaSocket(connectionOptions);
 conn.isInit = false
 
+// login use pairing code
+// source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
+if (pairingCode && !conn.authState.creds.registered) {
+    if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+    console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+    console.log(chalk.cyan('├───────────────────────────────────────┤'));
+    let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
+    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+    phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+    // Ask again when entering the wrong number
+    if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+        console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+        console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
+        console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+        console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+        console.log(chalk.cyan('├───────────────────────────────────────┤'));
+        phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
+        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+    }
+
+    let code = await conn.requestPairingCode(phoneNumber)
+    code = code?.match(/.{1,4}/g)?.join("-") || code
+    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+    console.log(` 💻 ${chalk.redBright('Your Pairing Code')}:`);
+    console.log(chalk.cyan('├───────────────────────────────────────┤'));
+    console.log(`   ${chalk.cyan('- Code')}: ${code}`);
+    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+    rl.close()
+}
+
+// login mobile API (prone to bans)
+// source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L72
+if (useMobile && !conn.authState.creds.registered) {
+    const {
+        registration
+    } = conn.authState.creds || {
+        registration: {}
+    }
+
+    if (!registration.phoneNumber) {
+        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+        console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+        console.log(chalk.cyan('├───────────────────────────────────────┤'));
+        let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
+        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+
+        // Ask again when entering the wrong number
+        if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+            console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+            console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
+            console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+            console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+            console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+            console.log(chalk.cyan('├───────────────────────────────────────┤'));
+            phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
+            console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+            phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+        }
+
+        registration.phoneNumber = "+" + phoneNumber
+    }
+
+    const phoneNumber = parsePhoneNumber(registration.phoneNumber)
+    if (!phoneNumber.isValid()) throw new Error('Invalid phone number: ' + registration.phoneNumber)
+
+    registration.phoneNumber = phoneNumber.format("E.164")
+    registration.phoneNumberCountryCode = phoneNumber.countryCallingCode
+    registration.phoneNumberNationalNumber = phoneNumber.nationalNumber
+
+    const mcc = PHONENUMBER_MCC[phoneNumber.countryCallingCode]
+    registration.phoneNumberMobileCountryCode = mcc
+
+    async function enterCode() {
+        try {
+            console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+            console.log(`📨 ${chalk.redBright('Please Enter Your OTP Code')}:`);
+            console.log(chalk.cyan('├───────────────────────────────────────┤'));
+            const code = await question(`   ${chalk.cyan('- Code')}: `);
+            console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+            const response = await conn.register(code.replace(/[^0-9]/g, '').trim().toLowerCase())
+            console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+            console.log(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
+            console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+            console.log(response)
+            rl.close()
+        } catch (e) {
+            console.error('Failed to register your phone number. Please try again.\n', e)
+            await askOTP()
+        }
+    }
+
+    async function askOTP() {
+        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+        console.log(`📨 ${chalk.redBright('What method do you want to use? "sms" or "voice"')}`);
+        console.log(chalk.cyan('├───────────────────────────────────────┤'));
+        let code = await question(`   ${chalk.cyan('- Method')}: `);
+        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+        code = code.replace(/["']/g, '').trim().toLowerCase()
+
+        if (code !== 'sms' && code !== 'voice') return await askOTP()
+
+        registration.method = code
+
+        try {
+            await conn.requestRegistrationCode(registration)
+            await enterCode()
+        } catch (e) {
+            console.error('Failed to request registration code. Please try again.\n', e)
+            await askOTP()
+        }
+    }
+
+    await askOTP()
+}
 
 if (!opts['test']) {
     setInterval(async () => {
@@ -204,7 +374,6 @@ if (!opts['test']) {
     // Tiap 1 jam
 }
 if (opts['server'])(await import('./server.js')).default(global.conn, PORT)
-
 /* Clear */
 function clearTmp() {
     const tmp = [tmpdir(), join(__dirname, './tmp')];
@@ -257,11 +426,11 @@ function purgeOldFiles() {
                     if (stats.isFile() && stats.mtimeMs < oneHourAgo && file !== 'creds.json') {
                         unlinkSync(filePath, (err) => {
                             if (err) throw err;
-        console.log(`Berkas ${file} berhasil dihapus`);
-    });
-} else {
-    console.log(`Berkas ${file} tidak dihapus`);
-}
+                            console.log(`Berkas ${file} berhasil dihapus`);
+                        });
+                    } else {
+                        console.log(`Berkas ${file} tidak dihapus`);
+                    }
                 });
             });
         });
@@ -271,26 +440,54 @@ function purgeOldFiles() {
 /* Update */
 async function connectionUpdate(update) {
     const {
-        connection,
         lastDisconnect,
-        isNewLogin
-    } = update;
-    global.stopped = connection;
-    if (isNewLogin) conn.isInit = true;
-    const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode;
-    if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
-        console.log(await global.reloadHandler(true).catch(console.error));
-        global.timestamp.connect = new Date;
-    }
-    if (global.db.data == null) loadDatabase();
-    if (update.qr != 0 && update.qr != undefined) {
+        connection,
+        qr
+    } = update
+    if (!pairingCode && !useMobile && useQr && qr != 0 && qr != undefined) {
         console.log(chalk.yellow('🚩ㅤPindai kode QR ini, kode QR akan kedaluwarsa dalam 60 detik.'));
     }
-    if (connection == 'open') {
-        console.log(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
+    if (connection) {
+        console.info(`Connection Status : ${connection}`)
     }
-    if (connection == 'close') {
-        console.log(chalk.yellow('🚩ㅤKoneksi ditutup, silakan pindai kode QR ini lagi.'));
+
+    if (connection === "close") {
+        let reason = new Boom(lastDisconnect?.error)?.output.statusCode
+        if (reason === DisconnectReason.badSession) {
+            console.log(`Bad Session File, Please Delete Session and Scan Again`)
+            process.send('reset')
+        } else if (reason === DisconnectReason.connectionClosed) {
+            console.log("Connection closed, reconnecting....")
+            await global.reloadHandler()
+        } else if (reason === DisconnectReason.connectionLost) {
+            console.log("Connection Lost from Server, reconnecting...")
+            await global.reloadHandler()
+        } else if (reason === DisconnectReason.connectionReplaced) {
+            console.log("Connection Replaced, Another New Session Opened, Please Close Current Session First")
+            process.exit(1)
+        } else if (reason === DisconnectReason.loggedOut) {
+            console.log(`Device Logged Out, Please Scan Again And Run.`)
+            process.exit(1)
+        } else if (reason === DisconnectReason.restartRequired) {
+            console.log("Restart Required, Restarting...")
+            await global.reloadHandler()
+        } else if (reason === DisconnectReason.timedOut) {
+            console.log("Connection TimedOut, Reconnecting...")
+            process.send('reset')
+        } else if (reason === DisconnectReason.multideviceMismatch) {
+            console.log("Multi device mismatch, please scan again")
+            platform() === "win32" ? process.kill(process.pid, "SIGINT") : process.kill()
+        } else {
+            console.log(reason)
+            process.send('reset')
+        }
+    }
+
+    if (connection === "open") {
+        conn.sendMessage(nomorown + "@s.whatsapp.net", {
+            text: `${conn?.user?.name || "Taylors"} has Connected...`,
+        })
+        console.log(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
     }
 }
 
@@ -323,6 +520,7 @@ global.reloadHandler = async function(restatConn) {
         conn.ev.off('group-participants.update', conn.participantsUpdate);
         conn.ev.off('groups.update', conn.groupsUpdate);
         conn.ev.off('message.delete', conn.onDelete);
+        conn.ev.off("presence.update", conn.presenceUpdate);
         conn.ev.off('connection.update', conn.connectionUpdate);
         conn.ev.off('creds.update', conn.credsUpdate);
     }
@@ -360,6 +558,7 @@ global.reloadHandler = async function(restatConn) {
     conn.participantsUpdate = handler.participantsUpdate.bind(global.conn);
     conn.groupsUpdate = handler.groupsUpdate.bind(global.conn);
     conn.onDelete = handler.deleteUpdate.bind(global.conn);
+    conn.presenceUpdate = handler.presenceUpdate.bind(global.conn);
     conn.connectionUpdate = connectionUpdate.bind(global.conn);
     conn.credsUpdate = saveCreds.bind(global.conn, true);
 
@@ -376,6 +575,7 @@ global.reloadHandler = async function(restatConn) {
     conn.ev.on('group-participants.update', conn.participantsUpdate);
     conn.ev.on('groups.update', conn.groupsUpdate);
     conn.ev.on('message.delete', conn.onDelete);
+    conn.ev.on("presence.update", conn.presenceUpdate);
     conn.ev.on('connection.update', conn.connectionUpdate);
     conn.ev.on('creds.update', conn.credsUpdate);
     isInit = false;
