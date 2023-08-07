@@ -1,42 +1,49 @@
-const handler = async (m, { conn, usedPrefix, command, args }) => {
-    if (global.db.data.chats[m.chat]?.simi && /^simi$/i.test(args[0])) return m.reply("Matikan fitur *SIMI* terlebih dahulu. Ketik *SIMI OFF*");
+const features = ["antiCall", "antiDelete", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel", "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic", "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory", "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews", "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly", "lastAnime", "latestNews"];
 
-    const features = ["antiCall", "antiDelete", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel", "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic", "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory", "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews", "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly", "lastAnime", "latestNews"];
+let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isROwner }) => {
+  const listEnab = `
+🛠️ *DAFTAR FITUR*
+${features.map((f, index) => `🔹 ${index + 1}. ${f} [${global.db.data.chats[m.chat][f] ? 'Aktif' : 'Tidak aktif'}]`).join('\n')}
 
-    const action = /^(on|enable)$/i.test(command) ? true : /^(off|disable)$/i.test(command) ? false : null;
-    if (action === null) return m.reply(`Gunakan *${usedPrefix}on* <nomor fitur> untuk mengaktifkan dan *${usedPrefix}off* <nomor fitur> untuk menonaktifkan.`);
+*===========================
+📝 CARA MENGGUNAKAN:*
+→ *AKTIFKAN* ${usedPrefix}on [nomor]
+→ *NONAKTIFKAN* ${usedPrefix}off [nomor]
 
-    const numFeature = parseInt(args[0]);
-    if (isNaN(numFeature) || numFeature <= 0 || numFeature > features.length) {
-        let featureList = "*📋 Daftar Fitur dan Status*\n";
-        features.forEach((feature, index) => {
-            let status = global.db.data.chats[m.chat][feature];
-            if (/^(antiDelete|detect|getmsg|lastAnime|latestNews|welcome)$/i.test(feature)) status = !status;
-            featureList += `\n*${index + 1}.* ${feature}: ${status ? '✅ Aktif' : '❌ Nonaktif'}`;
-        });
-        featureList += `\n\nGunakan *${usedPrefix}on* <nomor fitur> untuk mengaktifkan dan *${usedPrefix}off* <nomor fitur> untuk menonaktifkan fitur.`;
-        return m.reply(featureList);
-    }
+📚 CONTOH:
+→ *AKTIFKAN* ${usedPrefix}on 2
+→ *NONAKTIFKAN* ${usedPrefix}off 3`;
 
-    const feature = features[numFeature - 1];
-    if (!feature) return m.reply("Fitur tidak ditemukan. Gunakan *help* untuk melihat daftar fitur yang tersedia.");
+  let isEnable = !/false|disable|(turn)?off|0/i.test(command);
+  let chat = global.db.data.chats[m.chat];
+  let user = global.db.data.users[m.sender];
+  let index = parseInt(args[0]) - 1;
 
-    let previousStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
-    if (/^(antiDelete|detect|getmsg|lastAnime|latestNews|welcome)$/i.test(feature)) {
-        global.db.data.chats[m.chat][feature] = !global.db.data.chats[m.chat][feature];
-    } else {
-        global.db.data.chats[m.chat][feature] = action;
-    }
-    const currentStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
-    if (/^(antiDelete|detect|getmsg|lastAnime|latestNews|welcome)$/i.test(feature)) {
-        previousStatus = global.db.data.chats[m.chat][feature] ? '✅ aktif' : '❌ nonaktif';
-    }
-    return m.reply(`✨ Fitur *${feature}* telah di${currentStatus}.\nSebelumnya fitur ini ${previousStatus}.`);
+  if (isNaN(index) || index < 0 || index >= features.length) {
+    return await conn.reply(m.chat, listEnab, m);
+  }
+
+  let type = features[index];
+
+  if (!m.isGroup && !isOwner) {
+    conn.reply(m.chat, "Maaf, fitur ini hanya bisa digunakan di dalam grup oleh pemilik bot.", m);
+    throw false;
+  }
+
+  if (m.isGroup && !isAdmin) {
+    conn.reply(m.chat, "Maaf, fitur ini hanya bisa digunakan oleh admin grup.", m);
+    throw false;
+  }
+if (["antiDelete", "detect", "getmsg", "lastAnime", "latestNews", "welcome"].includes(type)) {
+  chat[type] = !isEnable;
+  conn.reply(m.chat, `✅ *${type}* berhasil ${isEnable ? 'diaktifkan' : 'dinonaktifkan'}.`, m);
+  } else {
+  chat[type] = isEnable;
+  conn.reply(m.chat, `✅ *${type}* berhasil ${isEnable ? 'diaktifkan' : 'dinonaktifkan'}.`, m);
+  }
 };
-
-handler.help = ["on", "off"];
-handler.tags = ["main"];
-handler.command = /^(on|off|enable|disable)$/i;
-handler.limit = true;
+handler.help = ["en", "dis"].map(v => v + "able <nomor>");
+handler.tags = ["group", "owner"];
+handler.command = /^((en|dis)able|(tru|fals)e|(turn)?o(n|ff)|[01])$/i;
 
 export default handler;
