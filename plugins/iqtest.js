@@ -162,14 +162,14 @@ function getRandomQuestion() {
 
 const handler = async (m, { conn, text }) => {
   conn.iqtest = conn.iqtest ? conn.iqtest : {};
-  const iqtest = conn.iqtest[m.sender];
+  const iqtest = conn.iqtest[m.chat];
 
   if (m.sender in conn.iqtest && iqtest.state === 'playing') {
     return m.reply("⏳ Anda sedang berada dalam permainan. Tunggu hingga permainan selesai atau ketik \"stop\" untuk menghentikan permainan.");
   }
 
   const user = global.db.data.users[m.sender];
-  conn.iqtest[m.sender] = {
+  conn.iqtest[m.chat] = {
     state: 'playing',
     currentQuestionIndex: 0,
     iq: 100,
@@ -179,14 +179,14 @@ const handler = async (m, { conn, text }) => {
   const currentAnswer = question.jawaban[0].toLowerCase();
   const totalQuestions = soal.length; // Total number of questions
   conn.reply(m.chat, `🧠 *Permainan Tes IQ* 🧠\n\n🌟 Mari kita mulai!\n\n🔔 Pertanyaan 1 dari ${totalQuestions}: ${currentQuestion}\n\nKetik jawaban Anda (ketik "stop" untuk menghentikan permainan):`, m);
-  conn.iqtest[m.sender].currentAnswer = currentAnswer;
-  conn.iqtest[m.sender].totalIQ = 100; // Initialize totalIQ
+  conn.iqtest[m.chat].currentAnswer = currentAnswer;
+  conn.iqtest[m.chat].totalIQ = 100; // Initialize totalIQ
 };
 
 handler.before = async (m, { conn }) => {
   const penalty = 10; // Penalty for wrong answers
   conn.iqtest = conn.iqtest ? conn.iqtest : {};
-  const iqtest = conn.iqtest[m.sender];
+  const iqtest = conn.iqtest[m.chat];
   if (!iqtest || iqtest.state !== 'playing') return;
   if (m.isBaileys) return;
   if (m.sender in conn.iqtest && iqtest.state === 'playing') {
@@ -200,7 +200,7 @@ handler.before = async (m, { conn }) => {
     const finalScore = iqtest.iq;
     const message = `🏁 *Permainan Selesai* 🏁\n\n🧠 Skor IQ akhir Anda adalah ${finalScore}.\n🎯 Anda telah menyelesaikan ${currentQuestionIndex} dari ${totalQuestions} pertanyaan.\n\n✨ Terima kasih telah bermain!`;
     conn.reply(m.chat, message, m);
-    delete conn.iqtest[m.sender];
+    delete conn.iqtest[m.chat];
     return;
   }
 
@@ -230,12 +230,12 @@ handler.before = async (m, { conn }) => {
     const currentQuestion = nextQuestion.pertanyaan[0];
     const currentAnswer = nextQuestion.jawaban[0].toLowerCase();
     message += `🔔 Pertanyaan ${nextQuestionIndex + 1} dari ${totalQuestions}: ${currentQuestion}\n\nKetik jawaban Anda (ketik "stop" untuk menghentikan permainan):`;
-    conn.iqtest[m.sender].currentAnswer = currentAnswer;
-    conn.iqtest[m.sender].currentQuestionIndex = nextQuestionIndex;
+    conn.iqtest[m.chat].currentAnswer = currentAnswer;
+    conn.iqtest[m.chat].currentQuestionIndex = nextQuestionIndex;
   } else {
     const finalScore = totalIQ; // Final score is the totalIQ
     message += `\n⏳ Anda sudah menyelesaikan semua ${totalQuestions} soal.\n🧠 Skor IQ akhir Anda adalah ${finalScore}.\n\n🎉 Ketik "stop" untuk melihat hasil permainan.`;
-    delete conn.iqtest[m.sender];
+    delete conn.iqtest[m.chat];
   }
 
   conn.reply(m.chat, message, m);

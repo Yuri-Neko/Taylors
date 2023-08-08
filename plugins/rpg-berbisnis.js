@@ -63,7 +63,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
       } : *+${(users[who2].money += untung * 1)} Money*\n@${
         who3.split`@`[0]
       } : *+${(users[who3].money += untung * 1)} Money*`;
-      conn.reply(m.chat, bis, m, { mentions: await conn.parseMention(bis) });
+      conn.reply(m.chat, bis, m, { mentions: conn.parseMention(bis) });
     }, 60000);
     setTimeout(() => {
       let bis = `Waahhh.. statistik bisnis kalian menurun\n\nMasing-masing minus:\n@${
@@ -75,7 +75,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
       } : *-${(users[who2].money -= rugi * 1)} Money*\n@${
         who3.split`@`[0]
       } : *-${(users[who3].money -= rugi * 1)} Money*`;
-      conn.reply(m.chat, bis, m, { mentions: await conn.parseMention(bis) });
+      conn.reply(m.chat, bis, m, { mentions: conn.parseMention(bis) });
     }, 14400000);
     setTimeout(() => {
       let bis = `Selamat statistik bisnis kalian meningkat\n\nMasing-masing mendapatkan:\n@${
@@ -87,7 +87,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
       } : *+${(users[who2].money += untung * 1)} Money*\n@${
         who3.split`@`[0]
       } : *+${(users[who3].money += untung * 1)} Money*`;
-      conn.reply(m.chat, bis, m, { mentions: await conn.parseMention(bis) });
+      conn.reply(m.chat, bis, m, { mentions: conn.parseMention(bis) });
     }, 28800000);
     setTimeout(() => {
       let bis = `Selamat statistik bisnis kalian meningkat\n\nMasing-masing mendapatkan:\n@${
@@ -99,7 +99,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
       } : *+${(users[who2].money += untung * 1)} Money*\n@${
         who3.split`@`[0]
       } : *+${(users[who3].money += untung * 1)} Money*`;
-      conn.reply(m.chat, bis, m, { mentions: await conn.parseMention(bis) });
+      conn.reply(m.chat, bis, m, { mentions: conn.parseMention(bis) });
     }, 43200000);
     setTimeout(() => {
       let bis = `Mohon tunggu kak..\n\n@${name.split`@`[0]}\n@${
@@ -109,7 +109,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
       }\nSedang berbisnis.. 😅\n\n*Kalian semua meletakkan modal masing-masing -${dapat} 😅*\n@${
         name.split`@`[0]
       }\n@${who1.split`@`[0]}\n@${who2.split`@`[0]}\n@${who3.split`@`[0]}`;
-      conn.reply(m.chat, bis, m, { mentions: await conn.parseMention(bis) });
+      conn.reply(m.chat, bis, m, { mentions: conn.parseMention(bis) });
     }, 57600000);
     setTimeout(() => {
       let bis = `Selamat statistik bisnis kalian meningkat\n\nMasing-masing mendapatkan:\n@${
@@ -121,7 +121,7 @@ let handler = async (m, { conn, args, text, usedPrefix, command }) => {
       } : *+${(users[who2].money += untung * 1)} Money*\n@${
         who3.split`@`[0]
       } : *+${(users[who3].money += untung * 1)} Money*`;
-      conn.reply(m.chat, bis, m, { mentions: await conn.parseMention(bis) });
+      conn.reply(m.chat, bis, m, { mentions: conn.parseMention(bis) });
     }, 72000000);
   } else m.reply(`Anda Sudah Berbisnis , tunggu ${timers} lagi..`);
 };
