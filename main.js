@@ -48,9 +48,6 @@ import {
 import {
     format
 } from 'util';
-import {
-    Boom
-} from "@hapi/boom";
 import Pino from 'pino';
 import {
     makeWaSocket,
@@ -85,9 +82,9 @@ import {
 } from "libphonenumber-js"
 const store = makeInMemoryStore({
     logger: Pino({
-        level: "silent"
+        level: "fatal"
     }).child({
-        level: "store"
+        level: "fatal"
     })
 })
 
@@ -218,12 +215,12 @@ const connectionOptions = {
     },
     msgRetryCounterMap,
     logger: Pino({
-        level: 'silent'
+        level: 'fatal'
     }),
     auth: {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, Pino({
-            level: 'silent'
+            level: 'fatal'
         })),
     },
     browser: ['TaylorBot', 'Safari', '1.0.0'],
@@ -245,7 +242,7 @@ conn.isInit = false
 // login use pairing code
 // source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
 if (pairingCode && !conn.authState.creds.registered) {
-    if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+    if (useMobile) console.log('Cannot use pairing code with mobile api')
     console.log(chalk.cyan('╭───────────────────────────────────────╮'));
     console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
     console.log(chalk.cyan('├───────────────────────────────────────┤'));
@@ -309,7 +306,7 @@ if (useMobile && !conn.authState.creds.registered) {
     }
 
     const phoneNumber = parsePhoneNumber(registration.phoneNumber)
-    if (!phoneNumber.isValid()) throw new Error('Invalid phone number: ' + registration.phoneNumber)
+    if (!phoneNumber.isValid()) console.log('Invalid phone number: ' + registration.phoneNumber)
 
     registration.phoneNumber = phoneNumber.format("E.164")
     registration.phoneNumberCountryCode = phoneNumber.countryCallingCode
@@ -445,49 +442,14 @@ async function connectionUpdate(update) {
         qr
     } = update
     if (!pairingCode && !useMobile && useQr && qr != 0 && qr != undefined) {
-        console.log(chalk.yellow('🚩ㅤPindai kode QR ini, kode QR akan kedaluwarsa dalam 60 detik.'));
+        conn.logger.info(chalk.yellow('🚩ㅤPindai kode QR ini, kode QR akan kedaluwarsa dalam 60 detik.'));
     }
-    if (connection) {
-        console.info(`Connection Status : ${connection}`)
-    }
-
-    if (connection === "close") {
-        let reason = new Boom(lastDisconnect?.error)?.output.statusCode
-        if (reason === DisconnectReason.badSession) {
-            console.log(`Bad Session File, Please Delete Session and Scan Again`)
-            process.send('reset')
-        } else if (reason === DisconnectReason.connectionClosed) {
-            console.log("Connection closed, reconnecting....")
-            await global.reloadHandler()
-        } else if (reason === DisconnectReason.connectionLost) {
-            console.log("Connection Lost from Server, reconnecting...")
-            await global.reloadHandler()
-        } else if (reason === DisconnectReason.connectionReplaced) {
-            console.log("Connection Replaced, Another New Session Opened, Please Close Current Session First")
-            process.exit(1)
-        } else if (reason === DisconnectReason.loggedOut) {
-            console.log(`Device Logged Out, Please Scan Again And Run.`)
-            process.exit(1)
-        } else if (reason === DisconnectReason.restartRequired) {
-            console.log("Restart Required, Restarting...")
-            await global.reloadHandler()
-        } else if (reason === DisconnectReason.timedOut) {
-            console.log("Connection TimedOut, Reconnecting...")
-            process.send('reset')
-        } else if (reason === DisconnectReason.multideviceMismatch) {
-            console.log("Multi device mismatch, please scan again")
-            platform() === "win32" ? process.kill(process.pid, "SIGINT") : process.kill()
-        } else {
-            console.log(reason)
-            process.send('reset')
-        }
-    }
-
     if (connection === "open") {
-        conn.sendMessage(nomorown + "@s.whatsapp.net", {
-            text: `${conn?.user?.name || "Taylors"} has Connected...`,
-        })
-        console.log(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
+        conn.sendMessage(nomorown + "@s.whatsapp.net", { text: `Halo, @${nomorown}! 👋\n\nBot *${conn?.user?.name || "Taylors"}* sudah terhubung... 🤖`, mentions: [nomorown + "@s.whatsapp.net"] }, { quoted: null });
+        conn.logger.info(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
+    }
+    if (connection == 'close') {
+        conn.logger.error(chalk.yellow(`🚩ㅤKoneksi ditutup, harap hapus folder ${global.authFile} dan pindai ulang kode QR`));
     }
 }
 
