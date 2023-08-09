@@ -1,18 +1,18 @@
-const features = ["antiCall", "antiDelete", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel", "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic", "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory", "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews", "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly", "lastAnime", "latestNews"];
-
 let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isROwner }) => {
-  const listEnab = `
-🛠️ *DAFTAR FITUR*
-${features.map((f, index) => `🔹 ${index + 1}. ${f} [${global.db.data.chats[m.chat][f] ? 'Aktif' : 'Tidak aktif'}]`).join('\n')}
+const features = ["antiCall", "antiDelete", "antiLink", "antiLinkFb", "antiLinkHttp", "antiLinkIg", "antiLinkTel", "antiLinkTik", "antiLinkWa", "antiLinkYt", "antiSatir", "antiSticker", "antiVirtex", "antiToxic", "antibule", "autoBio", "autoJoin", "autoPresence", "autoReply", "autoSticker", "autoVn", "viewStory", "bcjoin", "detect", "getmsg", "nsfw", "antiSpam", "simi", "updateAnime", "updateAnimeNews", "viewonce", "welcome", "autoread", "gconly", "nyimak", "pconly", "self", "swonly", "lastAnime", "latestNews"];
+const activeFeatures = ["antiDelete", "detect", "getmsg", "lastAnime", "latestNews", "welcome"];
+const result = features.map((f, i) => {
+  const isActive = activeFeatures.includes(f) ? !global.db.data.chats[m.chat][f] : global.db.data.chats[m.chat][f];
+  return `*${(i + 1).toString().padEnd(2)}.* ${f.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).padEnd(18)} ${isActive ? "✅ On" : "❌ Off"}`;
+}).join('\n');
 
-*===========================
-📝 CARA MENGGUNAKAN:*
-→ *AKTIFKAN* ${usedPrefix}on [nomor]
-→ *NONAKTIFKAN* ${usedPrefix}off [nomor]
+const  featureStatus = `*# Feature*            *Mode*\n${"-".repeat(33)}\n${result}`;
+  const listEnab = `🛠️ *DAFTAR FITUR*
 
-📚 CONTOH:
-→ *AKTIFKAN* ${usedPrefix}on 2
-→ *NONAKTIFKAN* ${usedPrefix}off 3`;
+${featureStatus}
+
+*📝 CARA MENGGUNAKAN:*
+→ ${usedPrefix + command} [nomor]`;
 
   let isEnable = !/false|disable|(turn)?off|0/i.test(command);
   let chat = global.db.data.chats[m.chat];
@@ -36,10 +36,10 @@ ${features.map((f, index) => `🔹 ${index + 1}. ${f} [${global.db.data.chats[m.
   }
 if (["antiDelete", "detect", "getmsg", "lastAnime", "latestNews", "welcome"].includes(type)) {
   chat[type] = !isEnable;
-  conn.reply(m.chat, `✅ *${type}* berhasil ${isEnable ? 'diaktifkan' : 'dinonaktifkan'}.`, m);
+  conn.reply(m.chat, `Feature *${type.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}* mode *${isEnable ? 'ON ✅' : 'OFF ❌'}*`, m);
   } else {
   chat[type] = isEnable;
-  conn.reply(m.chat, `✅ *${type}* berhasil ${isEnable ? 'diaktifkan' : 'dinonaktifkan'}.`, m);
+  conn.reply(m.chat, `Feature *${type.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}* mode *${isEnable ? 'ON ✅' : 'OFF ❌'}*`, m);
   }
 };
 handler.help = ["en", "dis"].map(v => v + "able <nomor>");
