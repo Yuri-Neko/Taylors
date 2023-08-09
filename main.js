@@ -37,6 +37,9 @@ import {
 
 import yargs from 'yargs';
 import {
+    promisify
+} from 'util';
+import {
     spawn
 } from 'child_process';
 import lodash from 'lodash';
@@ -48,6 +51,9 @@ import {
 import {
     format
 } from 'util';
+import {
+    Boom
+} from "@hapi/boom";
 import Pino from 'pino';
 import {
     makeWaSocket,
@@ -242,33 +248,33 @@ conn.isInit = false
 // login use pairing code
 // source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
 if (pairingCode && !conn.authState.creds.registered) {
-    if (useMobile) console.log('Cannot use pairing code with mobile api')
-    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-    console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-    console.log(chalk.cyan('├───────────────────────────────────────┤'));
+    if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+    conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+    conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+    conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
     let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+    conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
     phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
     // Ask again when entering the wrong number
     if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
-        console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
-        console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
-        console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
-        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-        console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-        console.log(chalk.cyan('├───────────────────────────────────────┤'));
+        conn.logger.info(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+        conn.logger.info(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
+        conn.logger.info(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+        conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+        conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+        conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
         phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+        conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
     }
 
     let code = await conn.requestPairingCode(phoneNumber)
     code = code?.match(/.{1,4}/g)?.join("-") || code
-    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-    console.log(` 💻 ${chalk.redBright('Your Pairing Code')}:`);
-    console.log(chalk.cyan('├───────────────────────────────────────┤'));
-    console.log(`   ${chalk.cyan('- Code')}: ${code}`);
-    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+    conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+    conn.logger.info(` 💻 ${chalk.redBright('Your Pairing Code')}:`);
+    conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+    conn.logger.info(`   ${chalk.cyan('- Code')}: ${code}`);
+    conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
     rl.close()
 }
 
@@ -282,23 +288,23 @@ if (useMobile && !conn.authState.creds.registered) {
     }
 
     if (!registration.phoneNumber) {
-        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-        console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-        console.log(chalk.cyan('├───────────────────────────────────────┤'));
+        conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+        conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+        conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
         let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+        conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
         // Ask again when entering the wrong number
         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
-            console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
-            console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
-            console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
-            console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-            console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-            console.log(chalk.cyan('├───────────────────────────────────────┤'));
+            conn.logger.info(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+            conn.logger.info(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
+            conn.logger.info(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+            conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+            conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+            conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
             phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-            console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+            conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
             phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
         }
 
@@ -306,7 +312,7 @@ if (useMobile && !conn.authState.creds.registered) {
     }
 
     const phoneNumber = parsePhoneNumber(registration.phoneNumber)
-    if (!phoneNumber.isValid()) console.log('Invalid phone number: ' + registration.phoneNumber)
+    if (!phoneNumber.isValid()) throw new Error('Invalid phone number: ' + registration.phoneNumber)
 
     registration.phoneNumber = phoneNumber.format("E.164")
     registration.phoneNumberCountryCode = phoneNumber.countryCallingCode
@@ -317,16 +323,16 @@ if (useMobile && !conn.authState.creds.registered) {
 
     async function enterCode() {
         try {
-            console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-            console.log(`📨 ${chalk.redBright('Please Enter Your OTP Code')}:`);
-            console.log(chalk.cyan('├───────────────────────────────────────┤'));
+            conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+            conn.logger.info(`📨 ${chalk.redBright('Please Enter Your OTP Code')}:`);
+            conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
             const code = await question(`   ${chalk.cyan('- Code')}: `);
-            console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+            conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
             const response = await conn.register(code.replace(/[^0-9]/g, '').trim().toLowerCase())
-            console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
-            console.log(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
-            console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
-            console.log(response)
+            conn.logger.info(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+            conn.logger.info(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
+            conn.logger.info(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+            conn.logger.info(response)
             rl.close()
         } catch (e) {
             console.error('Failed to register your phone number. Please try again.\n', e)
@@ -335,11 +341,11 @@ if (useMobile && !conn.authState.creds.registered) {
     }
 
     async function askOTP() {
-        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-        console.log(`📨 ${chalk.redBright('What method do you want to use? "sms" or "voice"')}`);
-        console.log(chalk.cyan('├───────────────────────────────────────┤'));
+        conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
+        conn.logger.info(`📨 ${chalk.redBright('What method do you want to use? "sms" or "voice"')}`);
+        conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
         let code = await question(`   ${chalk.cyan('- Method')}: `);
-        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+        conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
         code = code.replace(/["']/g, '').trim().toLowerCase()
 
         if (code !== 'sms' && code !== 'voice') return await askOTP()
@@ -350,7 +356,7 @@ if (useMobile && !conn.authState.creds.registered) {
             await conn.requestRegistrationCode(registration)
             await enterCode()
         } catch (e) {
-            console.error('Failed to request registration code. Please try again.\n', e)
+            conn.logger.error('Failed to request registration code. Please try again.\n', e)
             await askOTP()
         }
     }
@@ -360,12 +366,12 @@ if (useMobile && !conn.authState.creds.registered) {
 
 if (!opts['test']) {
     setInterval(async () => {
-        if (global.db.data) await global.db.write().catch(console.error)
+        if (global.db.data) await global.db.write().catch(logErrorDetails)
         if (opts['autocleartmp']) try {
             clearTmp()
 
         } catch (e) {
-            console.error(e)
+            logErrorDetails(e)
         }
     }, 3600000)
     // Tiap 1 jam
@@ -423,10 +429,10 @@ function purgeOldFiles() {
                     if (stats.isFile() && stats.mtimeMs < oneHourAgo && file !== 'creds.json') {
                         unlinkSync(filePath, (err) => {
                             if (err) throw err;
-                            console.log(`Berkas ${file} berhasil dihapus`);
+                            conn.logger.info(`Berkas ${file} berhasil dihapus`);
                         });
                     } else {
-                        console.log(`Berkas ${file} tidak dihapus`);
+                        conn.logger.info(`Berkas ${file} tidak dihapus`);
                     }
                 });
             });
@@ -438,32 +444,73 @@ function purgeOldFiles() {
 async function connectionUpdate(update) {
     const {
         lastDisconnect,
+        isNewLogin,
         connection,
         qr
-    } = update
+    } = update;
+    if (isNewLogin) conn.isInit = true;
+
     if (!pairingCode && !useMobile && useQr && qr != 0 && qr != undefined) {
         conn.logger.info(chalk.yellow('🚩ㅤPindai kode QR ini, kode QR akan kedaluwarsa dalam 60 detik.'));
     }
-    if (connection === "open") {
-        conn.sendMessage(nomorown + "@s.whatsapp.net", { text: `Halo, @${nomorown}! 👋\n\nBot *${conn?.user?.name || "Taylors"}* sudah terhubung... 🤖`, mentions: [nomorown + "@s.whatsapp.net"] }, { quoted: null });
-        conn.logger.info(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
+    if (connection) {
+        conn.logger.info(`Connection Status : ${connection}`)
     }
-    if (connection == 'close') {
-        conn.logger.error(chalk.yellow(`🚩ㅤKoneksi ditutup, harap hapus folder ${global.authFile} dan pindai ulang kode QR`));
+
+    if (connection === "close") {
+        let reason = new Boom(lastDisconnect?.error)?.output.statusCode
+        if (reason === DisconnectReason.badSession) {
+            conn.logger.info(`Bad Session File, Please Delete Session and Scan Again`)
+            process.send('reset')
+        } else if (reason === DisconnectReason.connectionClosed) {
+            conn.logger.info("Connection closed, reconnecting....")
+            await global.reloadHandler(true).catch(logErrorDetails)
+        } else if (reason === DisconnectReason.connectionLost) {
+            conn.logger.info("Connection Lost from Server, reconnecting...")
+            await global.reloadHandler(true).catch(logErrorDetails)
+        } else if (reason === DisconnectReason.connectionReplaced) {
+            conn.logger.info("Connection Replaced, Another New Session Opened, Please Close Current Session First")
+            process.exit(1)
+        } else if (reason === DisconnectReason.loggedOut) {
+            conn.logger.info(`Device Logged Out, Please Scan Again And Run.`)
+            process.exit(1)
+        } else if (reason === DisconnectReason.restartRequired) {
+            conn.logger.info("Restart Required, Restarting...")
+            await global.reloadHandler(true).catch(logErrorDetails)
+        } else if (reason === DisconnectReason.timedOut) {
+            conn.logger.info("Connection TimedOut, Reconnecting...")
+            process.send('reset')
+        } else if (reason === DisconnectReason.multideviceMismatch) {
+            conn.logger.info("Multi device mismatch, please scan again")
+            platform() === "win32" ? process.kill(process.pid, "SIGINT") : process.kill()
+        } else {
+            conn.logger.info(reason)
+            process.send('reset')
+        }
+    }
+
+    if (connection === "open") {
+        conn.sendMessage(nomorown + "@s.whatsapp.net", {
+            text: `${conn?.user?.name || "Taylors"} has Connected...`,
+        })
+        console.log(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
     }
 }
 
-process.on('uncaughtException', console.error)
+process.on('uncaughtException', (error) => {
+    logErrorDetails(error);
+    process.exit(1); // Keluar dengan kode kesalahan
+});
 // let strQuot = /(["'])(?:(?=(\\?))\2.)*?\1/
 
 let isInit = true
-let handler = await import('./handler.js')
+let handler = await import('./handler.js').catch(logErrorDetails);
 global.reloadHandler = async function(restatConn) {
     try {
-        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
+        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(logErrorDetails);
         if (Object.keys(Handler || {}).length) handler = Handler;
     } catch (e) {
-        console.error(e);
+        logErrorDetails(e);
     }
     if (restatConn) {
         const oldChats = global.conn.chats;
@@ -554,34 +601,44 @@ async function filesInit() {
             const module = await import(file);
             global.plugins[filename] = module.default || module;
         } catch (e) {
-            conn.logger.error(e);
+            logErrorDetails(e);
             delete global.plugins[filename];
         }
     }
 }
-filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
+filesInit().then((_) => Object.keys(global.plugins)).catch(logErrorDetails);
 
 global.reload = async (_ev, filename) => {
     if (pluginFilter(filename)) {
-        const dir = global.__filename(join(pluginFolder, filename), true);
+        const pluginFilePath = join(pluginFolder, filename);
+        const pluginFileExists = existsSync(pluginFilePath);
+
         if (filename in global.plugins) {
-            if (existsSync(dir)) conn.logger.info(` updated plugin - '${filename}'`);
-            else {
-                conn.logger.warn(`deleted plugin - '${filename}'`);
-                return delete global.plugins[filename];
+            if (pluginFileExists) {
+                conn.logger.info(`Updated plugin - '${filename}'`);
+            } else {
+                conn.logger.warn(`Deleted plugin - '${filename}'`);
+                delete global.plugins[filename];
+                return;
             }
-        } else conn.logger.info(`new plugin - '${filename}'`);
-        const err = syntaxerror(readFileSync(dir), filename, {
+        } else {
+            conn.logger.info(`New plugin - '${filename}'`);
+        }
+
+        const pluginFileContent = readFileSync(pluginFilePath);
+        const syntaxError = syntaxerror(pluginFileContent, filename, {
             sourceType: 'module',
             allowAwaitOutsideFunction: true,
         });
-        if (err) conn.logger.error(`syntax error while loading '${filename}'\n${format(err)}`);
-        else {
+
+        if (syntaxError) {
+            conn.logger.error(`Syntax error while loading '${filename}'\n${format(syntaxError)}`);
+        } else {
             try {
-                const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
+                const module = await import(`${global.__filename(pluginFilePath)}?update=${Date.now()}`);
                 global.plugins[filename] = module.default || module;
-            } catch (e) {
-                conn.logger.error(`error require plugin '${filename}\n${format(e)}'`);
+            } catch (error) {
+                conn.logger.error(`Error requiring plugin '${filename}\n${format(error)}'`);
             } finally {
                 global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
             }
@@ -591,50 +648,91 @@ global.reload = async (_ev, filename) => {
 
 Object.freeze(global.reload)
 watch(pluginFolder, global.reload)
-await global.reloadHandler()
+await global.reloadHandler(true).catch(logErrorDetails)
 
 /* QuickTest */
 async function _quickTest() {
-    let test = await Promise.all([
-        spawn('ffmpeg'),
-        spawn('ffprobe'),
-        spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-filter_complex', 'color', '-frames:v', '1', '-f', 'webp', '-']),
-        spawn('convert'),
-        spawn('magick'),
-        spawn('gm'),
-        spawn('find', ['--version'])
-    ].map(p => {
-        return Promise.race([
-            new Promise(resolve => {
-                p.on('close', code => {
-                    resolve(code !== 127)
-                })
-            }),
-            new Promise(resolve => {
-                p.on('error', _ => resolve(false))
-            })
-        ])
-    }))
-    let [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test
-    console.log(test)
-    let s = global.support = {
+    let test = await Promise.all(
+        [
+            spawn("ffmpeg"),
+            spawn("ffprobe"),
+            spawn("ffmpeg", [
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-filter_complex",
+                "color",
+                "-frames:v",
+                "1",
+                "-f",
+                "webp",
+                "-",
+            ]),
+            spawn("convert"),
+            spawn("magick"),
+            spawn("gm"),
+            spawn("find", ["--version"]),
+        ].map((p) => {
+            return Promise.race([
+                new Promise((resolve) => {
+                    p.on("close", (code) => {
+                        resolve(code !== 127);
+                    });
+                }),
+                new Promise((resolve) => {
+                    p.on("error", (_) => resolve(false));
+                }),
+            ]);
+        })
+    );
+    let [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test;
+    console.log(test);
+    let s = (global.support = {
         ffmpeg,
         ffprobe,
         ffmpegWebp,
         convert,
         magick,
         gm,
-        find
-    }
+        find,
+    });
+    // require('./lib/sticker').support = s
+    Object.freeze(global.support);
 
-    Object.freeze(global.support)
-
-    if (!s.ffmpeg) conn.logger.warn('Please install ffmpeg for sending videos (pkg install ffmpeg)')
-    if (s.ffmpeg && !s.ffmpegWebp) conn.logger.warn('Stickers may not animated without libwebp on ffmpeg (--enable-ibwebp while compiling ffmpeg)')
-    if (!s.convert && !s.magick && !s.gm) conn.logger.warn('Stickers may not work without imagemagick if libwebp on ffmpeg doesnt isntalled (pkg install imagemagick)')
+    if (!s.ffmpeg)
+        conn.logger.warn(
+            "Please install ffmpeg for sending videos (pkg install ffmpeg)"
+        );
+    if (s.ffmpeg && !s.ffmpegWebp)
+        conn.logger.warn(
+            "Stickers may not animated without libwebp on ffmpeg (--enable-ibwebp while compiling ffmpeg)"
+        );
+    if (!s.convert && !s.magick && !s.gm)
+        conn.logger.warn(
+            "Stickers may not work without imagemagick if libwebp on ffmpeg doesnt isntalled (pkg install imagemagick)"
+        );
 }
 
-/* QuickTest */
 _quickTest()
-    .then(() => conn.logger.info('Quick Test Done'))
-    .catch(console.error)
+    .then(() => conn.logger.info("☑️ Quick Test Done"))
+    .catch(logErrorDetails);
+
+
+// logErrorDetails
+function logErrorDetails(error) {
+    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+    console.log(`📌 ${chalk.redBright('Terjadi Kesalahan')}:`);
+    console.log(chalk.cyan('├───────────────────────────────────────┤'));
+    console.log(`   ${chalk.cyan('- Pesan Kesalahan')}: ${error.message}`);
+    console.log(`   ${chalk.cyan('- Tipe Kesalahan')}: ${error.name}`);
+    console.log(`   ${chalk.cyan('- Lokasi File')}: ${__filename}`);
+    console.log(`   ${chalk.cyan('- Baris')}: ${error.lineNumber || error.line}`);
+    console.log(`   ${chalk.cyan('- Stack Trace')}: ${error.stack}`);
+    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
+    // Saran perbaikan jika mungkin
+    if (error.name === 'ReferenceError') {
+        console.error('Saran: Pastikan variabel atau fungsi sudah dideklarasikan dengan benar.');
+    } else if (error.name === 'TypeError') {
+        console.error('Saran: Periksa tipe data yang digunakan dalam operasi tersebut.');
+    }
+}
