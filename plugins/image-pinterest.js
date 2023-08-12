@@ -21,37 +21,44 @@ let handler = async (m, {
     try {
         let res1, res2, res3, res4;
 
-        pinterest(text)
-            .then(result => {
-                res1 = result;
-                let teks1 = "🔍 *[ RESULT ]*";
-                return conn.sendFile(m.chat, res1.getRandom() || logo, "", teks1, m);
-            })
-            .then(() => searchPinterest(text))
-            .then(result => {
-                res2 = result;
-                let teks2 = "🔍 *[ RESULT ]*";
-                return conn.sendFile(m.chat, res2.getRandom() || logo, "", teks2, m);
-            })
-            .then(() => fetch("https://api.lolhuman.xyz/api/pinterest2?apikey=" + lolkey + "&query=" + text))
-            .then(response => response.json())
-            .then(result => {
-                res3 = result;
-                let teks3 = "🔍 *[ RESULT ]*";
-                return conn.sendFile(m.chat, (res3.result).getRandom() || logo, "", teks3, m);
-            })
-            .then(() => dylux.pinterest(text))
-            .then(result => {
-                res4 = result;
-                let teks4 = "🔍 *[ RESULT ]*";
-                return conn.sendFile(m.chat, (res4.getRandom()).replace(/236/g, "736") || logo, "", teks4, m);
-            })
-            .catch(error => {
-                console.error(error);
-            });
+        try {
+            res1 = await pinterest(text);
+            let teks1 = "🔍 *[ RESULT ]*";
+            await conn.sendFile(m.chat, res1.getRandom() || logo, "", teks1, m);
+        } catch (error) {
+            try {
+                res2 = await searchPinterest(text);
+                if (res2) {
+                    let teks2 = "🔍 *[ RESULT ]*";
+                    await conn.sendFile(m.chat, res2.getRandom() || logo, "", teks2, m);
+                }
+            } catch (error) {
+                try {
+                    let response = await fetch("https://api.lolhuman.xyz/api/pinterest2?apikey=" + lolkey + "&query=" + text);
+                    res3 = await response.json();
+                    if (res3) {
+                        let teks3 = "🔍 *[ RESULT ]*";
+                        await conn.sendFile(m.chat, (res3.result).getRandom() || logo, "", teks3, m);
+                    }
+                } catch (error) {
+                    try {
+                        res4 = await dylux.pinterest(text);
+                        if (res4) {
+                            let teks4 = "🔍 *[ RESULT ]*";
+                            await conn.sendFile(m.chat, (res4.getRandom()).replace(/236/g, "736") || logo, "", teks4, m);
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        await m.reply("An error occurred");
+                    }
+                }
+            }
+        }
     } catch (e) {
-        await m.reply(eror)
+        console.error(e);
+        await m.reply("An error occurred");
     }
+
 }
 handler.help = ["pinterest"]
 handler.tags = ["internet"]

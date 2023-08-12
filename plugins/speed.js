@@ -173,19 +173,23 @@ ${readMore}
 ${'```' + Object.keys(used).map((key, _, arr) => `${key.padEnd(Math.max(...arr.map(v => v.length)), ' ')}: ${format(used[key])}`).join('\n') + '```'
 }
 `
-let pesan = {
-    text: wait,
-    mentions: [m.sender],
-    contextInfo: {
-      forwardingScore: 256,
-      isForwarded: true
-    }
-  };
-
-  let { key } = await conn.sendMessage(m.chat, pesan, { quoted: m });
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  await conn.sendMessage(m.chat, { text: str, edit: key }, { quoted: m });
-
+const userInput = Math.round(neww - old);
+const input = userInput === 0 ? 1000 : userInput === 2 ? 2000 : userInput;
+const result = Number(input.toString().replace(/[^0-9]/g, ''));
+await m.reply(wait)
+await conn.relayMessage(m.chat,  {
+    requestPaymentMessage: {
+      currencyCodeIso4217: 'INR',
+      amount1000: result,
+      requestFrom: '0@s.whatsapp.net',
+      noteMessage: {
+      extendedTextMessage: {
+      text: str,
+      contextInfo: {
+      mentionedJid: [m.sender],
+      externalAdReply: {
+      showAdAttribution: true
+      }}}}}}, {})
 }
 handler.help = ['ping', 'speed']
 handler.tags = ['info', 'tools']

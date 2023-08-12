@@ -14,7 +14,7 @@ let handler = async (m, { conn, args }) => {
       txt += author
    await conn.relayMessage(m.chat,  {
     requestPaymentMessage: {
-      currencyCodeIso4217: 'USD',
+      currencyCodeIso4217: 'INR',
       amount1000: fsizedoc,
       requestFrom: '0@s.whatsapp.net',
       noteMessage: {
