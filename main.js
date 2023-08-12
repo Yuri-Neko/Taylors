@@ -176,16 +176,16 @@ const {
 if (!pairingCode && !useMobile && !useQr) {
     const title = "INFO";
     const message = "Please use one of the options: --pairing-code, --mobile, --qr";
-    const boxWidth = 80;
-    const horizontalLine = chalk.redBright("-".repeat(boxWidth));
+    const boxWidth = 40;
+    const horizontalLine = chalk.redBright("─".repeat(boxWidth));
 
     const formatText = (text, bgColor, textColor) => chalk[bgColor](chalk[textColor](text.padStart(boxWidth / 2 + text.length / 2).padEnd(boxWidth)));
 
-    console.log(`+${horizontalLine}+
+    console.log(`╭${horizontalLine}╮
 |${formatText(title, 'bgRed', 'white')}|
-+${horizontalLine}+
+├${horizontalLine}┤
 |${formatText(message, 'bgWhite', 'red')}|
-+${horizontalLine}+`);
+╰${horizontalLine}╯`);
 }
 
 const connectionOptions = {
@@ -249,32 +249,32 @@ conn.isInit = false
 // source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
 if (pairingCode && !conn.authState.creds.registered) {
     if (useMobile) throw new Error('Cannot use pairing code with mobile api')
-    conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-    conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-    conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+    console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+    console.log(chalk.cyan('├───────────────────────────────────────┤'));
     let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-    conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
     phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
     // Ask again when entering the wrong number
     if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
-        conn.logger.info(chalk.cyan('╭──────────────────────────────────────────────────╮'));
-        conn.logger.info(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
-        conn.logger.info(chalk.cyan('╰──────────────────────────────────────────────────╯'));
-        conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-        conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-        conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+        console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+        console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
+        console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+        console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+        console.log(chalk.cyan('├───────────────────────────────────────┤'));
         phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-        conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
     }
 
     let code = await conn.requestPairingCode(phoneNumber)
     code = code?.match(/.{1,4}/g)?.join("-") || code
-    conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-    conn.logger.info(` 💻 ${chalk.redBright('Your Pairing Code')}:`);
-    conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
-    conn.logger.info(`   ${chalk.cyan('- Code')}: ${code}`);
-    conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+    console.log(` 💻 ${chalk.redBright('Your Pairing Code')}:`);
+    console.log(chalk.cyan('├───────────────────────────────────────┤'));
+    console.log(`   ${chalk.cyan('- Code')}: ${code}`);
+    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
     rl.close()
 }
 
@@ -288,23 +288,23 @@ if (useMobile && !conn.authState.creds.registered) {
     }
 
     if (!registration.phoneNumber) {
-        conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-        conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-        conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+        console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+        console.log(chalk.cyan('├───────────────────────────────────────┤'));
         let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-        conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
         // Ask again when entering the wrong number
         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
-            conn.logger.info(chalk.cyan('╭──────────────────────────────────────────────────╮'));
-            conn.logger.info(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
-            conn.logger.info(chalk.cyan('╰──────────────────────────────────────────────────╯'));
-            conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-            conn.logger.info(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
-            conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+            console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+            console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
+            console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+            console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+            console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
+            console.log(chalk.cyan('├───────────────────────────────────────┤'));
             phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
-            conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+            console.log(chalk.cyan('╰───────────────────────────────────────╯'));
             phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
         }
 
@@ -323,29 +323,29 @@ if (useMobile && !conn.authState.creds.registered) {
 
     async function enterCode() {
         try {
-            conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-            conn.logger.info(`📨 ${chalk.redBright('Please Enter Your OTP Code')}:`);
-            conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+            console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+            console.log(`📨 ${chalk.redBright('Please Enter Your OTP Code')}:`);
+            console.log(chalk.cyan('├───────────────────────────────────────┤'));
             const code = await question(`   ${chalk.cyan('- Code')}: `);
-            conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+            console.log(chalk.cyan('╰───────────────────────────────────────╯'));
             const response = await conn.register(code.replace(/[^0-9]/g, '').trim().toLowerCase())
-            conn.logger.info(chalk.cyan('╭──────────────────────────────────────────────────╮'));
-            conn.logger.info(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
-            conn.logger.info(chalk.cyan('╰──────────────────────────────────────────────────╯'));
-            conn.logger.info(response)
+            console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
+            console.log(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
+            console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
+            console.log(response)
             rl.close()
-        } catch (e) {
-            console.error('Failed to register your phone number. Please try again.\n', e)
+        } catch (error) {
+            conn.logger.error('Failed to register your phone number. Please try again.\n', error)
             await askOTP()
         }
     }
 
     async function askOTP() {
-        conn.logger.info(chalk.cyan('╭───────────────────────────────────────╮'));
-        conn.logger.info(`📨 ${chalk.redBright('What method do you want to use? "sms" or "voice"')}`);
-        conn.logger.info(chalk.cyan('├───────────────────────────────────────┤'));
+        console.log(chalk.cyan('╭───────────────────────────────────────╮'));
+        console.log(`📨 ${chalk.redBright('What method do you want to use? "sms" or "voice"')}`);
+        console.log(chalk.cyan('├───────────────────────────────────────┤'));
         let code = await question(`   ${chalk.cyan('- Method')}: `);
-        conn.logger.info(chalk.cyan('╰───────────────────────────────────────╯'));
+        console.log(chalk.cyan('╰───────────────────────────────────────╯'));
         code = code.replace(/["']/g, '').trim().toLowerCase()
 
         if (code !== 'sms' && code !== 'voice') return await askOTP()
@@ -355,8 +355,8 @@ if (useMobile && !conn.authState.creds.registered) {
         try {
             await conn.requestRegistrationCode(registration)
             await enterCode()
-        } catch (e) {
-            conn.logger.error('Failed to request registration code. Please try again.\n', e)
+        } catch (error) {
+            conn.logger.error('Failed to request registration code. Please try again.\n', error)
             await askOTP()
         }
     }
@@ -366,12 +366,12 @@ if (useMobile && !conn.authState.creds.registered) {
 
 if (!opts['test']) {
     setInterval(async () => {
-        if (global.db.data) await global.db.write().catch(logErrorDetails)
+        if (global.db.data) await global.db.write().catch(console.error)
         if (opts['autocleartmp']) try {
             clearTmp()
 
-        } catch (e) {
-            logErrorDetails(e)
+        } catch (error) {
+            console.error
         }
     }, 3600000)
     // Tiap 1 jam
@@ -464,10 +464,10 @@ async function connectionUpdate(update) {
             process.send('reset')
         } else if (reason === DisconnectReason.connectionClosed) {
             conn.logger.info("Connection closed, reconnecting....")
-            await global.reloadHandler(true).catch(logErrorDetails)
+            await global.reloadHandler(true).catch(console.error)
         } else if (reason === DisconnectReason.connectionLost) {
             conn.logger.info("Connection Lost from Server, reconnecting...")
-            await global.reloadHandler(true).catch(logErrorDetails)
+            await global.reloadHandler(true).catch(console.error)
         } else if (reason === DisconnectReason.connectionReplaced) {
             conn.logger.info("Connection Replaced, Another New Session Opened, Please Close Current Session First")
             process.exit(1)
@@ -476,7 +476,7 @@ async function connectionUpdate(update) {
             process.exit(1)
         } else if (reason === DisconnectReason.restartRequired) {
             conn.logger.info("Restart Required, Restarting...")
-            await global.reloadHandler(true).catch(logErrorDetails)
+            await global.reloadHandler(true).catch(console.error)
         } else if (reason === DisconnectReason.timedOut) {
             conn.logger.info("Connection TimedOut, Reconnecting...")
             process.send('reset')
@@ -490,27 +490,37 @@ async function connectionUpdate(update) {
     }
 
     if (connection === "open") {
-        conn.sendMessage(nomorown + "@s.whatsapp.net", {
-            text: `${conn?.user?.name || "Taylors"} has Connected...`,
-        })
-        console.log(chalk.yellow('▣──────────────────────────────···\n│\n│❧ KONEKSI BERHASIL ✅\n│\n▣──────────────────────────────···'));
+        const { jid, name } = conn.user;
+        const currentTime = new Date();
+        const pingStart = new Date();
+        const infoMsg = `
+   ℹ️ *Bot Info:*
+   
+   🕒 Waktu sekarang: ${currentTime}
+   👤 Nama: ${name || 'Guest'}
+   🏷️ Tag: @${jid.split('@')[0]}
+   ⏱️ Kecepatan ping: ${pingStart - new Date()}ms
+   📅 Tanggal: ${currentTime.toDateString()}
+   🕰️ Jam: ${currentTime.toLocaleTimeString()}
+   📅 Hari: ${currentTime.toLocaleDateString('en-US', { weekday: 'long' })}
+   📝 Deskripsi: Halo! Saya adalah bot.
+        `;
+        conn.sendMessage(nomorown + "@s.whatsapp.net", { text: infoMsg, mentions: [nomorown + "@s.whatsapp.net", jid] }, { quoted: null })
+        conn.logger.info(chalk.yellow('Bot is ready'));
     }
 }
 
-process.on('uncaughtException', (error) => {
-    logErrorDetails(error);
-    process.exit(1); // Keluar dengan kode kesalahan
-});
+process.on('uncaughtException', console.error);
 // let strQuot = /(["'])(?:(?=(\\?))\2.)*?\1/
 
 let isInit = true
-let handler = await import('./handler.js').catch(logErrorDetails);
+let handler = await import('./handler.js').catch(console.error);
 global.reloadHandler = async function(restatConn) {
     try {
-        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(logErrorDetails);
+        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
         if (Object.keys(Handler || {}).length) handler = Handler;
-    } catch (e) {
-        logErrorDetails(e);
+    } catch (error) {
+        console.error;
     }
     if (restatConn) {
         const oldChats = global.conn.chats;
@@ -600,13 +610,13 @@ async function filesInit() {
             const file = global.__filename(join(pluginFolder, filename));
             const module = await import(file);
             global.plugins[filename] = module.default || module;
-        } catch (e) {
-            logErrorDetails(e);
+        } catch (error) {
+            console.error;
             delete global.plugins[filename];
         }
     }
 }
-filesInit().then((_) => Object.keys(global.plugins)).catch(logErrorDetails);
+filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
 
 global.reload = async (_ev, filename) => {
     if (pluginFilter(filename)) {
@@ -648,7 +658,7 @@ global.reload = async (_ev, filename) => {
 
 Object.freeze(global.reload)
 watch(pluginFolder, global.reload)
-await global.reloadHandler(true).catch(logErrorDetails)
+await global.reloadHandler(true).catch(console.error)
 
 /* QuickTest */
 async function _quickTest() {
@@ -715,24 +725,4 @@ async function _quickTest() {
 
 _quickTest()
     .then(() => conn.logger.info("☑️ Quick Test Done"))
-    .catch(logErrorDetails);
-
-
-// logErrorDetails
-function logErrorDetails(error) {
-    console.log(chalk.cyan('╭───────────────────────────────────────╮'));
-    console.log(`📌 ${chalk.redBright('Terjadi Kesalahan')}:`);
-    console.log(chalk.cyan('├───────────────────────────────────────┤'));
-    console.log(`   ${chalk.cyan('- Pesan Kesalahan')}: ${error.message}`);
-    console.log(`   ${chalk.cyan('- Tipe Kesalahan')}: ${error.name}`);
-    console.log(`   ${chalk.cyan('- Lokasi File')}: ${__filename}`);
-    console.log(`   ${chalk.cyan('- Baris')}: ${error.lineNumber || error.line}`);
-    console.log(`   ${chalk.cyan('- Stack Trace')}: ${error.stack}`);
-    console.log(chalk.cyan('╰───────────────────────────────────────╯'));
-    // Saran perbaikan jika mungkin
-    if (error.name === 'ReferenceError') {
-        console.error('Saran: Pastikan variabel atau fungsi sudah dideklarasikan dengan benar.');
-    } else if (error.name === 'TypeError') {
-        console.error('Saran: Periksa tipe data yang digunakan dalam operasi tersebut.');
-    }
-}
+    .catch(console.error);
