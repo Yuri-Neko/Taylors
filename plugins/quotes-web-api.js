@@ -1,4 +1,5 @@
 import fetch from "node-fetch"
+import cheerio from "cheerio"
 
 let handler = async (m, {
     command,
@@ -7,45 +8,44 @@ let handler = async (m, {
     text,
     args
 }) => {
-    let ends = [
-        "random",
-        "image",
-        "custom"
-    ]
-    let [modes, kodes] = text.split(/[^\w\s]/g)
-    if (!ends.includes(modes)) return m.reply("*Example:*\n.quotesweb random\n\n*Pilih type yg ada*\n" + ends.map((v, index) => "  ○ " + v).join('\n'))
+    if (!text) return m.reply("*Example:*\n.quotesweb 1")
+    if (!/^\d+$/.test(text)) return m.reply('Input harus berupa angka');
     await m.reply(wait)
-    if (modes.includes("random")) {
-        let res = await Quote("random", null)
-        let output = Object.entries(res[0]).map(([key, value]) => `  ○ *${key.toUpperCase()}:* ${value}`).join('\n')
+    try {
+        let src = await fetchQuotes(text)
+        let json = src[Math.floor(Math.random() * src.length)]
+        let output = Object.entries(json).map(([key, value]) => `  ○ *${key.toUpperCase()}:* ${value}`).join('\n')
         await m.reply(output)
+    } catch (e) {
+        await m.reply(eror)
     }
-    if (modes.includes("image")) {
-        if (!kodes) return m.reply("input url")
-        let res = await Quote("image", kodes)
-        await conn.sendFile(m.chat, res, '', '', m)
-    }
-    if (modes.includes("custom")) {
-        if (!kodes) return m.reply("input teks")
-        let res = await Quote("custom", kodes)
-        await conn.sendFile(m.chat, res, '', '', m)
-    }
-
 }
-handler.help = ["quotesweb type query"]
+handler.help = ["quotesweb page"]
 handler.tags = ["internet"]
 handler.command = /^(quotesweb)$/i
-
 export default handler
-async function Quote(modes, kodes) {
-    if (modes == "random") {
-        let res = await fetch("https://web-series-quotes-api.deta.dev/quote/")
-        return await res.json()
-    }
-    if (modes == "image") {
-        return "https://web-series-quotes-api.deta.dev/pic/image?background_img_url=" + encodeURIComponent(kodes) + "&text_color=white&text_size=80"
-    }
-    if (modes == "custom") {
-        return "https://web-series-quotes-api.deta.dev/pic/custom?text=" + encodeURIComponent(kodes) + "&background_color=white&text_color=black&text_size=120&x=3600&y=2400"
+
+async function fetchQuotes(page) {
+    try {
+        const response = await fetch('https://www.goodreads.com/quotes/tag/indonesia?page=' + page); // Ganti dengan URL halaman yang sesuai
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        const quotes = [];
+        $('.quoteDetails').each((index, element) => {
+            const quotes = $('.quoteText', element).text().trim();
+            const author = $('.authorOrTitle', element).text().trim();
+            const tags = $('.quoteFooter a[href^="/quotes/tag/"]', element).map((index, tagElement) => $(tagElement).text().trim()).get();
+            const likes = $('.quoteFooter a.smallText', element).text().trim();
+            quotes.push({
+                quotes,
+                author,
+                tags,
+                likes
+            });
+        });
+        return quotes;
+    } catch (error) {
+        console.error('Error fetching quotes:', error);
+        return [];
     }
 }
