@@ -44,7 +44,7 @@ let handler = async (m, { conn, command, args }) => {
   }
 
   const doc = generateDoc(teks, externalAdReply);
-  let groups = Object.entries(conn.chats).filter(([jid, chat]) => jid.endsWith('@g.us') && chat.isChats && !chat.metadata?.read_only && !chat.metadata?.announce).map(v => v[0])
+  let groups = Object.entries(conn.chats).filter(([_, chat]) => chat.isChats).map(v => v[0]).filter(item => item.endsWith('@g.us'));
   for (let id of groups) {
   if (command === 'bcvn') {
     const audioValue = m.quoted && m.quoted.mtype === "audioMessage" // Check for m.quoted before accessing m.quoted.mtype
