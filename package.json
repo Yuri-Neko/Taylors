@@ -58,6 +58,7 @@
         "chalk": "*",
         "cheerio": "*",
         "child_process": "*",
+        "chess.js": "*",
         "crypto": "*",
         "deepai": "*",
         "dhn-api": "*",
