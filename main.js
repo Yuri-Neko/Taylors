@@ -55,7 +55,7 @@ import {
 import {
     Boom
 } from "@hapi/boom";
-import P from 'pino';
+import Pino from 'pino';
 import {
     makeWaSocket,
     protoType,
@@ -79,18 +79,18 @@ const {
     makeInMemoryStore,
     proto,
     jidNormalizedUser,
-    PHONENUMBER_MCC
-} = await (await import('@adiwajshing/baileys'));
+    PHONENUMBER_MCC,
+    Browsers
+} = await (await import('@adiwajshing/baileys')).default;
 
 import readline from "readline"
 import {
     parsePhoneNumber
 } from "libphonenumber-js"
 const store = makeInMemoryStore({
-    logger: P({
-        level: "fatal"
-    }).child({
-        level: "fatal"
+    logger: Pino().child({
+        level: 'fatal',
+        stream: 'store'
     })
 })
 
@@ -104,7 +104,7 @@ const rl = readline.createInterface({
 })
 const question = (text) => new Promise((resolve) => rl.question(text, resolve))
 import NodeCache from "node-cache"
-const msgRetryCounterCache = new NodeCache() 
+const msgRetryCounterCache = new NodeCache()
 const {
     CONNECTING
 } = ws
@@ -217,30 +217,37 @@ const connectionOptions = {
         return message;
     },
     msgRetryCounterMap,
-    logger: P({
+    logger: Pino({
         level: 'fatal'
     }),
     auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, P({
-            level: 'fatal'
+        keys: makeCacheableSignalKeyStore(state.keys, Pino().child({
+            level: 'fatal',
+            stream: 'store'
         })),
     },
-    browser: ['Taylors', 'Chrome', '1.0.0'],
+    browser: Browsers.macOS('Desktop'),
     version,
-    generateHighQualityLinkPreview: true,
     getMessage: async (key) => {
         let jid = jidNormalizedUser(key.remoteJid)
         let msg = await store.loadMessage(jid, key.id)
         return msg?.message || ""
     },
     msgRetryCounterCache,
-    defaultQueryTimeoutMs: undefined,
+    connectTimeoutMs: 60_000,
+    defaultQueryTimeoutMs: 0,
+    keepAliveIntervalMs: 10000,
+    emitOwnEvents: true,
+    fireInitQueries: true,
+    generateHighQualityLinkPreview: true,
+    syncFullHistory: true,
+    markOnlineOnConnect: true
 };
 
 global.conn = makeWaSocket(connectionOptions);
-conn.isInit = false
 store.bind(conn.ev)
+conn.isInit = false
 
 if (pairingCode && !conn.authState.creds.registered) {
     if (useMobile) conn.logger.error('Cannot use pairing code with mobile api')
@@ -268,7 +275,7 @@ if (pairingCode && !conn.authState.creds.registered) {
     console.log(chalk.cyan('├───────────────────────────────────────┤'));
     console.log(`   ${chalk.cyan('- Code')}: ${code}`);
     console.log(chalk.cyan('╰───────────────────────────────────────╯'));
-    // rl.close()
+    rl.close()
 }
 
 if (useMobile && !conn.authState.creds.registered) {
@@ -317,7 +324,7 @@ if (useMobile && !conn.authState.creds.registered) {
             console.log(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
             console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
             console.log(response)
-            // rl.close()
+            rl.close()
         } catch (error) {
             conn.logger.error('Failed to register your phone number. Please try again.\n', error)
             await askOTP()
@@ -381,7 +388,7 @@ function purgeSession() {
 }
 
 function purgeSessionSB() {
-const folderPath = './jadibot';
+    const folderPath = './jadibot';
     if (!existsSync(folderPath)) {
         mkdirSync(folderPath);
         console.log('Folder jadibot berhasil dibuat.');
@@ -403,7 +410,7 @@ const folderPath = './jadibot';
 }
 
 function purgeOldFiles() {
-const folderPath = './jadibot';
+    const folderPath = './jadibot';
     if (!existsSync(folderPath)) {
         mkdirSync(folderPath);
         console.log('Folder jadibot berhasil dibuat.');
