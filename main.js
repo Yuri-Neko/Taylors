@@ -3,7 +3,7 @@ import './config.js';
 
 import {
     createRequire
-} from "module"; // Bring in the ability to create the 'require' method
+} from "module";
 import path, {
     join
 } from 'path';
@@ -30,6 +30,7 @@ import {
     statSync,
     unlinkSync,
     existsSync,
+    mkdirSync,
     readFileSync,
     rmSync,
     watch
@@ -54,7 +55,7 @@ import {
 import {
     Boom
 } from "@hapi/boom";
-import Pino from 'pino';
+import P from 'pino';
 import {
     makeWaSocket,
     protoType,
@@ -79,15 +80,14 @@ const {
     proto,
     jidNormalizedUser,
     PHONENUMBER_MCC
-} = await import('@adiwajshing/baileys');
+} = await (await import('@adiwajshing/baileys'));
 
-//import store from './lib/store-single.js';
 import readline from "readline"
 import {
     parsePhoneNumber
 } from "libphonenumber-js"
 const store = makeInMemoryStore({
-    logger: Pino({
+    logger: P({
         level: "fatal"
     }).child({
         level: "fatal"
@@ -104,8 +104,7 @@ const rl = readline.createInterface({
 })
 const question = (text) => new Promise((resolve) => rl.question(text, resolve))
 import NodeCache from "node-cache"
-const msgRetryCounterCache = new NodeCache() // for retry message, "waiting message"
-
+const msgRetryCounterCache = new NodeCache() 
 const {
     CONNECTING
 } = ws
@@ -132,12 +131,10 @@ global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse()
 const symbolRegex = /^[^\w\s\d]/;
 const emojiRegex = /^(\p{Emoji}|[\uFE0F\u200D])/u;
 global.prefix = new RegExp(`(${symbolRegex.source})|(${emojiRegex.source})`, 'u');
-
-// Read
 global.db = new Low(/https?:\/\//.test(opts['db'] || '') ? new cloudDBAdapter(opts['db']) : new JSONFile(`${opts._[0] ? opts._[0] + '_' : ''}database.json`))
 
 
-global.DATABASE = global.db // Backwards Compatibility
+global.DATABASE = global.db
 global.loadDatabase = async function loadDatabase() {
     if (global.db.READ) return new Promise((resolve) => setInterval(async function() {
         if (!global.db.READ) {
@@ -220,42 +217,39 @@ const connectionOptions = {
         return message;
     },
     msgRetryCounterMap,
-    logger: Pino({
+    logger: P({
         level: 'fatal'
     }),
     auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, Pino({
+        keys: makeCacheableSignalKeyStore(state.keys, P({
             level: 'fatal'
         })),
     },
-    browser: ['TaylorBot', 'Safari', '1.0.0'],
+    browser: ['Taylors', 'Chrome', '1.0.0'],
     version,
-    generateHighQualityLinkPreview: true, // make high preview link
+    generateHighQualityLinkPreview: true,
     getMessage: async (key) => {
         let jid = jidNormalizedUser(key.remoteJid)
         let msg = await store.loadMessage(jid, key.id)
-
         return msg?.message || ""
     },
-    msgRetryCounterCache, // Resolve waiting messages
-    defaultQueryTimeoutMs: undefined, // for this issues https://github.com/WhiskeySockets/Baileys/issues/276
+    msgRetryCounterCache,
+    defaultQueryTimeoutMs: undefined,
 };
 
 global.conn = makeWaSocket(connectionOptions);
 conn.isInit = false
+store.bind(conn.ev)
 
-// login use pairing code
-// source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
 if (pairingCode && !conn.authState.creds.registered) {
-    if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+    if (useMobile) conn.logger.error('Cannot use pairing code with mobile api')
     console.log(chalk.cyan('╭───────────────────────────────────────╮'));
     console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
     console.log(chalk.cyan('├───────────────────────────────────────┤'));
     let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
     console.log(chalk.cyan('╰───────────────────────────────────────╯'));
     phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-    // Ask again when entering the wrong number
     if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
         console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
         console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
@@ -267,7 +261,6 @@ if (pairingCode && !conn.authState.creds.registered) {
         console.log(chalk.cyan('╰───────────────────────────────────────╯'));
         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
     }
-
     let code = await conn.requestPairingCode(phoneNumber)
     code = code?.match(/.{1,4}/g)?.join("-") || code
     console.log(chalk.cyan('╭───────────────────────────────────────╮'));
@@ -275,18 +268,15 @@ if (pairingCode && !conn.authState.creds.registered) {
     console.log(chalk.cyan('├───────────────────────────────────────┤'));
     console.log(`   ${chalk.cyan('- Code')}: ${code}`);
     console.log(chalk.cyan('╰───────────────────────────────────────╯'));
-    rl.close()
+    // rl.close()
 }
 
-// login mobile API (prone to bans)
-// source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L72
 if (useMobile && !conn.authState.creds.registered) {
     const {
         registration
     } = conn.authState.creds || {
         registration: {}
     }
-
     if (!registration.phoneNumber) {
         console.log(chalk.cyan('╭───────────────────────────────────────╮'));
         console.log(`📨 ${chalk.redBright('Please type your WhatsApp number')}:`);
@@ -294,8 +284,6 @@ if (useMobile && !conn.authState.creds.registered) {
         let phoneNumber = await question(`   ${chalk.cyan('- Number')}: `);
         console.log(chalk.cyan('╰───────────────────────────────────────╯'));
         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-        // Ask again when entering the wrong number
         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
             console.log(chalk.cyan('╭──────────────────────────────────────────────────╮'));
             console.log(`💬 ${chalk.redBright("Start with your country's WhatsApp code, Example 62xxx")}:`);
@@ -307,20 +295,16 @@ if (useMobile && !conn.authState.creds.registered) {
             console.log(chalk.cyan('╰───────────────────────────────────────╯'));
             phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
         }
-
         registration.phoneNumber = "+" + phoneNumber
     }
 
     const phoneNumber = parsePhoneNumber(registration.phoneNumber)
-    if (!phoneNumber.isValid()) throw new Error('Invalid phone number: ' + registration.phoneNumber)
-
+    if (!phoneNumber.isValid()) conn.logger.error('Invalid phone number: ' + registration.phoneNumber)
     registration.phoneNumber = phoneNumber.format("E.164")
     registration.phoneNumberCountryCode = phoneNumber.countryCallingCode
     registration.phoneNumberNationalNumber = phoneNumber.nationalNumber
-
     const mcc = PHONENUMBER_MCC[phoneNumber.countryCallingCode]
     registration.phoneNumberMobileCountryCode = mcc
-
     async function enterCode() {
         try {
             console.log(chalk.cyan('╭───────────────────────────────────────╮'));
@@ -333,7 +317,7 @@ if (useMobile && !conn.authState.creds.registered) {
             console.log(`💬 ${chalk.redBright("Successfully registered your phone number.")}`);
             console.log(chalk.cyan('╰──────────────────────────────────────────────────╯'));
             console.log(response)
-            rl.close()
+            // rl.close()
         } catch (error) {
             conn.logger.error('Failed to register your phone number. Please try again.\n', error)
             await askOTP()
@@ -347,11 +331,8 @@ if (useMobile && !conn.authState.creds.registered) {
         let code = await question(`   ${chalk.cyan('- Method')}: `);
         console.log(chalk.cyan('╰───────────────────────────────────────╯'));
         code = code.replace(/["']/g, '').trim().toLowerCase()
-
         if (code !== 'sms' && code !== 'voice') return await askOTP()
-
         registration.method = code
-
         try {
             await conn.requestRegistrationCode(registration)
             await enterCode()
@@ -360,31 +341,29 @@ if (useMobile && !conn.authState.creds.registered) {
             await askOTP()
         }
     }
-
     await askOTP()
 }
 
-if (!opts['test']) {
-    setInterval(async () => {
-        if (global.db.data) await global.db.write().catch(console.error)
-        if (opts['autocleartmp']) try {
-            clearTmp()
+conn.logger.info(`W A I T I N G\n`);
 
-        } catch (error) {
-            console.error
-        }
-    }, 3600000)
-    // Tiap 1 jam
+if (!opts['test']) {
+    if (global.db) {
+        setInterval(async () => {
+            if (global.db.data) await global.db.write();
+            if (opts['autocleartmp'] && (global.support || {}).find)(tmp = [os.tmpdir(), 'tmp', 'jadibot'], tmp.forEach((filename) => cp.spawn('find', [filename, '-amin', '3', '-type', 'f', '-delete'])));
+        }, 30 * 1000);
+    }
 }
-if (opts['server'])(await import('./server.js')).default(global.conn, PORT)
-/* Clear */
+
+if (opts['server'])(await import('./server.js')).default(global.conn, PORT);
+
 function clearTmp() {
     const tmp = [tmpdir(), join(__dirname, './tmp')];
     const filename = [];
     tmp.forEach((dirname) => readdirSync(dirname).forEach((file) => filename.push(join(dirname, file))));
     return filename.map((file) => {
         const stats = statSync(file);
-        if (stats.isFile() && (Date.now() - stats.mtimeMs >= 1000 * 60 * 3)) return unlinkSync(file); // 3 minutes
+        if (stats.isFile() && (Date.now() - stats.mtimeMs >= 5 * 60 * 1000)) return unlinkSync(file);
         return false;
     });
 }
@@ -402,6 +381,13 @@ function purgeSession() {
 }
 
 function purgeSessionSB() {
+const folderPath = './jadibot';
+    if (!existsSync(folderPath)) {
+        mkdirSync(folderPath);
+        console.log('Folder jadibot berhasil dibuat.');
+    } else {
+        console.log('Folder jadibot sudah ada.');
+    }
     const listaDirectorios = readdirSync('./jadibot/');
     let SBprekey = [];
     listaDirectorios.forEach((filesInDir) => {
@@ -417,6 +403,13 @@ function purgeSessionSB() {
 }
 
 function purgeOldFiles() {
+const folderPath = './jadibot';
+    if (!existsSync(folderPath)) {
+        mkdirSync(folderPath);
+        console.log('Folder jadibot berhasil dibuat.');
+    } else {
+        console.log('Folder jadibot sudah ada.');
+    }
     const directories = ['./TaylorSession/', './jadibot/'];
     const oneHourAgo = Date.now() - (60 * 60 * 1000);
     directories.forEach((dir) => {
@@ -429,10 +422,10 @@ function purgeOldFiles() {
                     if (stats.isFile() && stats.mtimeMs < oneHourAgo && file !== 'creds.json') {
                         unlinkSync(filePath, (err) => {
                             if (err) throw err;
-                            conn.logger.info(`Berkas ${file} berhasil dihapus`);
+                            console.log(`Berkas ${file} berhasil dihapus`);
                         });
                     } else {
-                        conn.logger.info(`Berkas ${file} tidak dihapus`);
+                        console.log(`Berkas ${file} tidak dihapus`);
                     }
                 });
             });
@@ -440,57 +433,28 @@ function purgeOldFiles() {
     });
 }
 
-/* Update */
 async function connectionUpdate(update) {
     const {
+        connection,
         lastDisconnect,
         isNewLogin,
-        connection,
         qr
     } = update;
+    global.stopped = connection;
     if (isNewLogin) conn.isInit = true;
-
+    const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode;
+    if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
+        console.log(await global.reloadHandler(true).catch(console.error));
+    }
+    if (global.db.data == null) loadDatabase();
     if (!pairingCode && !useMobile && useQr && qr != 0 && qr != undefined) {
         conn.logger.info(chalk.yellow('🚩ㅤPindai kode QR ini, kode QR akan kedaluwarsa dalam 60 detik.'));
     }
-    if (connection) {
-        conn.logger.info(`Connection Status : ${connection}`)
-    }
-
-    if (connection === "close") {
-        let reason = new Boom(lastDisconnect?.error)?.output.statusCode
-        if (reason === DisconnectReason.badSession) {
-            conn.logger.info(`Bad Session File, Please Delete Session and Scan Again`)
-            process.send('reset')
-        } else if (reason === DisconnectReason.connectionClosed) {
-            conn.logger.info("Connection closed, reconnecting....")
-            await global.reloadHandler(true).catch(console.error)
-        } else if (reason === DisconnectReason.connectionLost) {
-            conn.logger.info("Connection Lost from Server, reconnecting...")
-            await global.reloadHandler(true).catch(console.error)
-        } else if (reason === DisconnectReason.connectionReplaced) {
-            conn.logger.info("Connection Replaced, Another New Session Opened, Please Close Current Session First")
-            process.exit(1)
-        } else if (reason === DisconnectReason.loggedOut) {
-            conn.logger.info(`Device Logged Out, Please Scan Again And Run.`)
-            process.exit(1)
-        } else if (reason === DisconnectReason.restartRequired) {
-            conn.logger.info("Restart Required, Restarting...")
-            await global.reloadHandler(true).catch(console.error)
-        } else if (reason === DisconnectReason.timedOut) {
-            conn.logger.info("Connection TimedOut, Reconnecting...")
-            process.send('reset')
-        } else if (reason === DisconnectReason.multideviceMismatch) {
-            conn.logger.info("Multi device mismatch, please scan again")
-            platform() === "win32" ? process.kill(process.pid, "SIGINT") : process.kill()
-        } else {
-            conn.logger.info(reason)
-            process.send('reset')
-        }
-    }
-
     if (connection === "open") {
-        const { jid, name } = conn.user;
+        const {
+            jid,
+            name
+        } = conn.user;
         const currentTime = new Date();
         const pingStart = new Date();
         const infoMsg = `
@@ -505,16 +469,23 @@ async function connectionUpdate(update) {
    📅 Hari: ${currentTime.toLocaleDateString('en-US', { weekday: 'long' })}
    📝 Deskripsi: Halo! Saya adalah bot.
         `;
-        conn.sendMessage(nomorown + "@s.whatsapp.net", { text: infoMsg, mentions: [nomorown + "@s.whatsapp.net", jid] }, { quoted: null })
-        conn.logger.info(chalk.yellow('Bot is ready'));
+        conn.sendMessage(nomorown + "@s.whatsapp.net", {
+            text: infoMsg,
+            mentions: [nomorown + "@s.whatsapp.net", jid]
+        }, {
+            quoted: null
+        })
+        chalk.yellow('R E A D Y');
+    }
+    if (connection == 'close') {
+        console.log(chalk.yellow(`🚩ㅤKoneksi ditutup, harap hapus folder ${global.authFile} dan pindai ulang kode QR`));
     }
 }
 
 process.on('uncaughtException', console.error);
-// let strQuot = /(["'])(?:(?=(\\?))\2.)*?\1/
 
-let isInit = true
-let handler = await import('./handler.js').catch(console.error);
+let isInit = true;
+let handler = await import('./handler.js');
 global.reloadHandler = async function(restatConn) {
     try {
         const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
@@ -559,8 +530,8 @@ global.reloadHandler = async function(restatConn) {
         restrictOff: '✅',
     };
 
-    conn.welcome = `${emoji.welcome} Hallo @user\n\n*W E L C O M E*\n⫹⫺ Di grup @subject\n\n⫹⫺ Baca *DESKRIPSI*\n@desc`;
-    conn.bye = `${emoji.bye} Sampai jumpa @user\n\n*G O O D B Y E*`;
+    conn.welcome = `${emoji.welcome} Hallo @user\n\n   *W E L C O M E*\n⫹⫺ Di grup @subject\n\n⫹⫺ Baca *DESKRIPSI*\n@desc`;
+    conn.bye = `   *G O O D B Y E*\n${emoji.bye} Sampai jumpa @user`;
     conn.spromote = `*${emoji.promote} @user* sekarang menjadi admin!`;
     conn.sdemote = `*${emoji.demote} @user* tidak lagi menjadi admin!`;
     conn.sDesc = `${emoji.desc} Deskripsi telah diubah menjadi:\n@desc`;
@@ -610,8 +581,8 @@ async function filesInit() {
             const file = global.__filename(join(pluginFolder, filename));
             const module = await import(file);
             global.plugins[filename] = module.default || module;
-        } catch (error) {
-            console.error;
+        } catch (e) {
+            conn.logger.error(e);
             delete global.plugins[filename];
         }
     }
@@ -620,109 +591,112 @@ filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
 
 global.reload = async (_ev, filename) => {
     if (pluginFilter(filename)) {
-        const pluginFilePath = join(pluginFolder, filename);
-        const pluginFileExists = existsSync(pluginFilePath);
-
+        const dir = global.__filename(join(pluginFolder, filename), true);
         if (filename in global.plugins) {
-            if (pluginFileExists) {
-                conn.logger.info(`Updated plugin - '${filename}'`);
-            } else {
-                conn.logger.warn(`Deleted plugin - '${filename}'`);
-                delete global.plugins[filename];
-                return;
+            if (existsSync(dir)) conn.logger.info(` updated plugin - '${filename}'`);
+            else {
+                conn.logger.warn(`deleted plugin - '${filename}'`);
+                return delete global.plugins[filename];
             }
-        } else {
-            conn.logger.info(`New plugin - '${filename}'`);
-        }
-
-        const pluginFileContent = readFileSync(pluginFilePath);
-        const syntaxError = syntaxerror(pluginFileContent, filename, {
+        } else conn.logger.info(`new plugin - '${filename}'`);
+        const err = syntaxerror(readFileSync(dir), filename, {
             sourceType: 'module',
             allowAwaitOutsideFunction: true,
         });
-
-        if (syntaxError) {
-            conn.logger.error(`Syntax error while loading '${filename}'\n${format(syntaxError)}`);
-        } else {
+        if (err) conn.logger.error(`syntax error while loading '${filename}'\n${format(err)}`);
+        else {
             try {
-                const module = await import(`${global.__filename(pluginFilePath)}?update=${Date.now()}`);
+                const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
                 global.plugins[filename] = module.default || module;
-            } catch (error) {
-                conn.logger.error(`Error requiring plugin '${filename}\n${format(error)}'`);
+            } catch (e) {
+                conn.logger.error(`error require plugin '${filename}\n${format(e)}'`);
             } finally {
                 global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
             }
         }
     }
 };
-
-Object.freeze(global.reload)
-watch(pluginFolder, global.reload)
-await global.reloadHandler(true).catch(console.error)
-
-/* QuickTest */
+Object.freeze(global.reload);
+watch(pluginFolder, global.reload);
+await global.reloadHandler();
 async function _quickTest() {
-    let test = await Promise.all(
-        [
-            spawn("ffmpeg"),
-            spawn("ffprobe"),
-            spawn("ffmpeg", [
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-filter_complex",
-                "color",
-                "-frames:v",
-                "1",
-                "-f",
-                "webp",
-                "-",
-            ]),
-            spawn("convert"),
-            spawn("magick"),
-            spawn("gm"),
-            spawn("find", ["--version"]),
-        ].map((p) => {
-            return Promise.race([
-                new Promise((resolve) => {
-                    p.on("close", (code) => {
-                        resolve(code !== 127);
-                    });
-                }),
-                new Promise((resolve) => {
-                    p.on("error", (_) => resolve(false));
-                }),
-            ]);
-        })
-    );
-    let [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test;
-    console.log(test);
-    let s = (global.support = {
+    const test = await Promise.all([
+        spawn('ffmpeg'),
+        spawn('ffprobe'),
+        spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-filter_complex', 'color', '-frames:v', '1', '-f', 'webp', '-']),
+        spawn('convert'),
+        spawn('magick'),
+        spawn('gm'),
+        spawn('find', ['--version']),
+    ].map((p) => {
+        return Promise.race([
+            new Promise((resolve) => {
+                p.on('close', (code) => {
+                    resolve(code !== 127);
+                });
+            }),
+            new Promise((resolve) => {
+                p.on('error', (_) => resolve(false));
+            })
+        ]);
+    }));
+    const [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test;
+    const s = global.support = {
         ffmpeg,
         ffprobe,
         ffmpegWebp,
         convert,
         magick,
         gm,
-        find,
-    });
-    // require('./lib/sticker').support = s
+        find
+    };
     Object.freeze(global.support);
-
-    if (!s.ffmpeg)
-        conn.logger.warn(
-            "Please install ffmpeg for sending videos (pkg install ffmpeg)"
-        );
-    if (s.ffmpeg && !s.ffmpegWebp)
-        conn.logger.warn(
-            "Stickers may not animated without libwebp on ffmpeg (--enable-ibwebp while compiling ffmpeg)"
-        );
-    if (!s.convert && !s.magick && !s.gm)
-        conn.logger.warn(
-            "Stickers may not work without imagemagick if libwebp on ffmpeg doesnt isntalled (pkg install imagemagick)"
-        );
 }
+setInterval(async () => {
+    if (stopped === 'close' || !conn || !conn.user) return;
+    await clearTmp();
+    console.log(chalk.cyanBright(
+        `\n╭───────────[ Auto Clear Tmp ]──────────────╮\n│\n` +
+        `│  Penyegaran Tempat Penyimpanan Berhasil ✅\n│\n` +
+        `╰───────────────────────────────────────╯\n`
+    ));
+}, 60 * 60 * 1000);
 
-_quickTest()
-    .then(() => conn.logger.info("☑️ Quick Test Done"))
-    .catch(console.error);
+setInterval(async () => {
+    if (stopped === 'close' || !conn || !conn.user) return;
+    await purgeSession();
+    console.log(chalk.cyanBright(
+        `\n╭────────[ Auto Purge Session ]───────────╮\n│\n` +
+        `│  Sesi-Sesi Tersimpan Sudah Dihapus ✅\n│\n` +
+        `╰────────────────────────────────────╯\n`
+    ));
+}, 60 * 60 * 1000);
+
+setInterval(async () => {
+    if (stopped === 'close' || !conn || !conn.user) return;
+    await purgeSessionSB();
+    console.log(chalk.cyanBright(
+        `\n╭────────[ Auto Purge Sub Session ]───────────╮\n│\n` +
+        `│  Sesi-Sesi Sub-Bot Telah Dihapus ✅\n│\n` +
+        `╰────────────────────────────────────╯\n`
+    ));
+}, 60 * 60 * 1000);
+
+setInterval(async () => {
+    if (stopped === 'close' || !conn || !conn.user) return;
+    await purgeOldFiles();
+    console.log(chalk.cyanBright(
+        `\n╭────────[ Auto Purge Old Files ]───────────╮\n│\n` +
+        `│  Berkas Lama Telah Dihapus ✅\n│\n` +
+        `╰────────────────────────────────────╯\n`
+    ));
+}, 60 * 60 * 1000);
+
+function clockString(ms) {
+    const d = isNaN(ms) ? '--' : Math.floor(ms / 86400000);
+    const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000) % 24;
+    const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
+    const s = isNaN(ms) ? '--' : Math.floor(ms / 1000) % 60;
+    return [d, ' Hari ', h, ' Jam ', m, ' Menit ', s, ' Detik '].map((v) => v.toString().padStart(2, '0')).join('');
+}
+_quickTest().catch(console.error);

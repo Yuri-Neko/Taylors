@@ -34,11 +34,18 @@ const delay = ms => isNumber(ms) && new Promise(resolve => setTimeout(function()
  * Handle messages upsert
  * @param {import("@adiwajshing/baileys").BaileysEventMap<unknown>["messages.upsert"]} groupsUpdate 
  */
- const {
-    getAggregateVotesInPollMessage
-} = await import('@adiwajshing/baileys');
-import store from './lib/store-single.js'
-
+const {
+    getAggregateVotesInPollMessage,
+    makeInMemoryStore
+} = await (await import('@adiwajshing/baileys')).default;
+import P from "pino"
+const store = makeInMemoryStore({
+    logger: P({
+        level: "fatal"
+    }).child({
+        level: "fatal"
+    })
+})
 export async function handler(chatUpdate) {
     this.msgqueque = this.msgqueque || []
     if (!chatUpdate)
@@ -1358,28 +1365,40 @@ export async function participantsUpdate({
             if (chat.welcome) {
                 const groupMetadata = await this.groupMetadata(id) || (this.chats[id] || {}).metadata;
                 for (let user of participants) {
-                const isAddAction = action === "add";
-                const welcomeText = isAddAction ? (chat.sWelcome || this.welcome || conn.welcome || `${emoji.welcome} Selamat datang, @user!`).replace("@subject", await this.getName(id)).replace("@desc", groupMetadata.desc?.toString() || "tidak diketahui") :
-                    (chat.sBye || this.bye || conn.bye || `${emoji.bye} Sampai jumpa, @user!`);
+                    const isAddAction = action === "add";
+                    const welcomeText = isAddAction ? (chat.sWelcome || this.welcome || conn.welcome || `${emoji.welcome} Selamat datang, @user!`).replace("@subject", await this.getName(id)).replace("@desc", groupMetadata.desc?.toString() || "tidak diketahui") :
+                        (chat.sBye || this.bye || conn.bye || `${emoji.bye} Sampai jumpa, @user!`);
 
-                const welran = await WelcomeLeave(await this.profilePictureUrl(user, "image").catch(() => hwaifu.getRandom()), await this.getName(user), katarandom.getRandom());
-                const byeran = await WelcomeLeave(await this.profilePictureUrl(id, "image").catch(() => hwaifu.getRandom()), await this.getName(id), katarandom.getRandom());
+                    const welran = await WelcomeLeave(await this.profilePictureUrl(user, "image").catch(() => hwaifu.getRandom()), await this.getName(user), katarandom.getRandom());
+                    const byeran = await WelcomeLeave(await this.profilePictureUrl(id, "image").catch(() => hwaifu.getRandom()), await this.getName(id), katarandom.getRandom());
 
-                const lapor = `\n\n${emoji.mail} *Pesan:* Jika menemukan bug, error, atau kesulitan dalam penggunaan, silakan laporkan/tanyakan kepada ${emoji.owner}`;
-                await this.sendFile(id, isAddAction ? welran : byeran, '', welcomeText.replace("@user", "@" + participants[0].split("@")[0]) + lapor, fakes, null, { mentions: [participants[0]] });
+                    const lapor = `\n\n${emoji.mail} *Pesan:* Jika menemukan bug, error, atau kesulitan dalam penggunaan, silakan laporkan/tanyakan kepada ${emoji.owner}`;
+                    await this.sendFile(id, isAddAction ? welran : byeran, '', welcomeText.replace("@user", "@" + participants[0].split("@")[0]) + lapor, fakes, null, {
+                        mentions: [participants[0]]
+                    });
                 }
             }
             break;
         case "promote":
             const promoteText = (chat.sPromote || this.spromote || conn.spromote || `${emoji.promote} @user *telah diangkat menjadi Admin*`).replace("@user", "@" + participants[0].split("@")[0]);
             if (chat.detect) {
-                this.sendMessage(id, { text: promoteText.trim(), mentions: [participants[0]] }, { quoted: fakes });
+                this.sendMessage(id, {
+                    text: promoteText.trim(),
+                    mentions: [participants[0]]
+                }, {
+                    quoted: fakes
+                });
             }
             break;
         case "demote":
             const demoteText = (chat.sDemote || this.sdemote || conn.sdemote || `${emoji.demote} @user *tidak lagi menjadi Admin*`).replace("@user", "@" + participants[0].split("@")[0]);
             if (chat.detect) {
-                this.sendMessage(id, { text: demoteText.trim(), mentions: [participants[0]] }, { quoted: fakes });
+                this.sendMessage(id, {
+                    text: demoteText.trim(),
+                    mentions: [participants[0]]
+                }, {
+                    quoted: fakes
+                });
             }
             break;
     }
@@ -1475,51 +1494,69 @@ export async function deleteUpdate(message) {
 /*
  Polling Update 
 */
-export async function pollUpdate(pollUpdate) {
-  for (const { key, messageTimestamp, pushName, broadcast } of pollUpdate) {
-            if (pollUpdate.pollUpdates) {
-                const pollCreation = await store.loadMessage(key.remoteJid, key.id)
-                if (pollCreation) {
-                    const pollMessage = await getAggregateVotesInPollMessage({
-                        message: pollCreation,
-                        pollUpdates: pollUpdate.pollUpdates,
-                    })
-                    pollUpdate.pollUpdates[0].vote = pollMessage
-                    
-                    console.log(pollMessage)
-                    conn.appenTextMessage(pollUpdate, pollUpdate.pollUpdates[0].vote || pollMessage.filter((v) => v.voters.length !== 0)[0]?.name, pollUpdate.message);
-                }
+async function getMessage(key) {
+    if (store) {
+        let msg_ = this.serializeM(this.loadMessage(key.id))
+        const msg = await store.loadMessage(key.remoteJid, msg_)
+        return msg?.message
+    }
+    return {
+        conversation: "Hai Im juna Bot"
+    }
+}
+export async function pollUpdate(chatUpdate) {
+    console.log(chatUpdate)
+    for (const {
+            key,
+            update
+        }
+        of chatUpdate) {
+        let msg = this.serializeM(this.loadMessage(key.id))
+        if (update.pollUpdates && key.fromMe) {
+            const pollCreation = await getMessage(key) || await store.loadMessage(key.remoteJid, msg)
+            if (pollCreation) {
+                const pollUpdate = await getAggregateVotesInPollMessage({
+                    message: pollCreation,
+                    pollUpdates: update.pollUpdates,
+                })
+                const toCmd = pollUpdate.filter(v => v.voters.length !== 0)[0]?.name
+                if (toCmd == undefined) return
+                const prefCmd = "." + toCmd
+                this.appenTextMessage(chatUpdate, prefCmd, chatUpdate.message)
             }
         }
+    }
 }
 
 /*
 Update presence
 */
 export async function presenceUpdate(presenceUpdate) {
-  const id = presenceUpdate.id;
-  const nouser = Object.keys(presenceUpdate.presences);
-  const status = presenceUpdate.presences[nouser]?.lastKnownPresence;
-  const user = global.db.data.users[nouser[0]];
-  
-  if (user?.afk && status === "composing" && user.afk > -1) {
-    if (user.banned) {
-      user.afk = -1;
-      user.afkReason = "User Banned Afk";
-      return;
-    }
-    
-    await console.log("AFK - TICK");
-    const username = nouser[0].split("@")[0];
-    const timeAfk = new Date() - user.afk;
-    const caption = `\n@${username} berhenti afk, dia sedang mengetik\n\nAlasan: ${
+    const id = presenceUpdate.id;
+    const nouser = Object.keys(presenceUpdate.presences);
+    const status = presenceUpdate.presences[nouser]?.lastKnownPresence;
+    const user = global.db.data.users[nouser[0]];
+
+    if (user?.afk && status === "composing" && user.afk > -1) {
+        if (user.banned) {
+            user.afk = -1;
+            user.afkReason = "User Banned Afk";
+            return;
+        }
+
+        await console.log("AFK - TICK");
+        const username = nouser[0].split("@")[0];
+        const timeAfk = new Date() - user.afk;
+        const caption = `\n@${username} berhenti afk, dia sedang mengetik\n\nAlasan: ${
       user.afkReason ? user.afkReason : "No Reason"
     }\nSelama ${timeAfk.toTimeString()} Yang Lalu\n`;
-    
-    this.reply(id, caption, null, { mentions: this.parseMention(caption) });
-    user.afk = -1;
-    user.afkReason = "";
-  }
+
+        this.reply(id, caption, null, {
+            mentions: this.parseMention(caption)
+        });
+        user.afk = -1;
+        user.afkReason = "";
+    }
 }
 
 
