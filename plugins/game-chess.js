@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 
 const handler = async (m, { conn, args }) => {
+conn.chess = conn.chess ? conn.chess : {}
   const key = m.chat;
   let chessData = conn.chess?.[key] || {
     gameData: null,
@@ -91,13 +92,13 @@ const handler = async (m, { conn, args }) => {
     return conn.reply(m.chat, `
       🌟 *Perintah Permainan Catur:*
 
-      *chess create* - Mulai permainan catur
-      *chess join* - Bergabung dalam permainan catur yang sedang menunggu
-      *chess start* - Memulai permainan catur jika ada dua pemain yang sudah bergabung
-      *chess delete* - Menghentikan permainan catur
-      *chess [dari] [ke]* - Melakukan langkah dalam permainan catur
+*chess create* - Mulai permainan catur
+*chess join* - Bergabung dalam permainan catur yang sedang menunggu
+*chess start* - Memulai permainan catur jika ada dua pemain yang sudah bergabung
+*chess delete* - Menghentikan permainan catur
+*chess [dari] [ke]* - Melakukan langkah dalam permainan catur
 
-      *Contoh:*
+*Contoh:*
       Ketik *chess create* untuk memulai permainan catur.
       Ketik *chess join* untuk bergabung dalam permainan catur yang sedang menunggu.
     `, m);
