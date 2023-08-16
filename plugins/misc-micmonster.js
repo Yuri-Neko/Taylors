@@ -492,15 +492,13 @@ let handler = async (m, {
     try {
         let res = await generateVoice(short, long, bawah)
         if (res) await conn.sendMessage(m.chat, {
-            audio: res,
-            seconds: fsizedoc,
-            ptt: true,
-            mimetype: "audio/mpeg",
-            fileName: "vn.mp3",
-            waveform: [100, 0, 100, 0, 100, 0, 100]
-        }, {
-            quoted: m
-        })
+        audio: res,
+        mimetype: 'audio/mp4',
+        ptt: true,
+        waveform: [100, 0, 100, 0, 100, 0, 100]
+    }, {
+        quoted: m
+    })
     } catch (e) {
         await m.reply(eror)
     }

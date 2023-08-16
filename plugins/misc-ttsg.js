@@ -25,17 +25,13 @@ let handler = async (m, {
         res = await TTSG(text, defaultLang)
     } finally {
         if (res) await conn.sendMessage(m.chat, {
-            audio: {
-                url: res
-            },
-            seconds: fsizedoc,
-            ptt: true,
-            mimetype: "audio/mpeg",
-            fileName: "vn.mp3",
-            waveform: [100, 0, 100, 0, 100, 0, 100]
-        }, {
-            quoted: m
-        })
+        audio: await(await conn.getFile(res)).data,
+        mimetype: 'audio/mp4',
+        ptt: true,
+        waveform: [100, 0, 100, 0, 100, 0, 100]
+    }, {
+        quoted: m
+    })
     }
 }
 handler.help = ["ttsg"]

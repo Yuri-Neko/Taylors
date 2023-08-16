@@ -119,7 +119,14 @@ let handler = async (m, {
     if (command == "ttspget") {
         try {
             let res = `https://api.pawan.krd/tts?text=${encodeURIComponent(two)}&voice=${one}`
-            await conn.sendFile(m.chat, res, "", "", m)
+            await conn.sendMessage(m.chat, {
+        audio: await(await conn.getFile(res)).data,
+        mimetype: 'audio/mp4',
+        ptt: true,
+        waveform: [100, 0, 100, 0, 100, 0, 100]
+    }, {
+        quoted: m
+    })
         } catch (e) {
             await m.reply(eror)
         }

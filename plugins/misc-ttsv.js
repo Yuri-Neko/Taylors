@@ -110,17 +110,13 @@ let voicer = [
             try {
             let res = await getAudioURLs(inputs, inputs_)
             await conn.sendMessage(m.chat, {
-                audio: {
-                    url: res
-                },
-                seconds: fsizedoc,
-                ptt: true,
-                mimetype: "audio/mpeg",
-                fileName: "vn.mp3",
-                waveform: [100, 0, 100, 0, 100, 0, 100]
-            }, {
-                quoted: m
-            })
+        audio: await(await conn.getFile(res)).data,
+        mimetype: 'audio/mp4',
+        ptt: true,
+        waveform: [100, 0, 100, 0, 100, 0, 100]
+    }, {
+        quoted: m
+    })
         } catch (e) {
             await m.reply(eror)
         }

@@ -139,18 +139,8 @@ let handler = async (m, {
             quoted: m
         })
         await conn.relayMessage(m.chat, msg.message, {})
-        await conn.sendMessage(m.chat, {
-        audio: {
-            url: vn
-        },
-        seconds: fsizedoc,
-        ptt: true,
-        mimetype: "audio/mpeg",
-        fileName: "vn.mp3",
-        waveform: [100, 0, 100, 0, 100, 0, 100]
-    }, {
-        quoted: m
-    })
+        await conn.sendPresenceUpdate('recording', m.chat)
+        await conn.sendFile(m.chat, vn, '', null, { key: msg.key, message: msg.message }, true, { ptt: true })
     
 }
 handler.help = ["menu", "help", "?"]
