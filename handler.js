@@ -38,12 +38,11 @@ const {
     getAggregateVotesInPollMessage,
     makeInMemoryStore
 } = await (await import('@adiwajshing/baileys')).default;
-import P from "pino"
+import Pino from "pino"
 const store = makeInMemoryStore({
-    logger: P({
-        level: "fatal"
-    }).child({
-        level: "fatal"
+    logger: Pino().child({
+        level: 'fatal',
+        stream: 'store'
     })
 })
 export async function handler(chatUpdate) {
@@ -1494,38 +1493,22 @@ export async function deleteUpdate(message) {
 /*
  Polling Update 
 */
-async function getMessage(key) {
-    if (store) {
-        let msg_ = this.serializeM(this.loadMessage(key.id))
-        const msg = await store.loadMessage(key.remoteJid, msg_)
-        return msg?.message
-    }
-    return {
-        conversation: "Hai Im juna Bot"
-    }
-}
-export async function pollUpdate(chatUpdate) {
-    console.log(chatUpdate)
-    for (const {
-            key,
-            update
-        }
-        of chatUpdate) {
-        let msg = this.serializeM(this.loadMessage(key.id))
-        if (update.pollUpdates && key.fromMe) {
-            const pollCreation = await getMessage(key) || await store.loadMessage(key.remoteJid, msg)
-            if (pollCreation) {
-                const pollUpdate = await getAggregateVotesInPollMessage({
-                    message: pollCreation,
-                    pollUpdates: update.pollUpdates,
-                })
-                const toCmd = pollUpdate.filter(v => v.voters.length !== 0)[0]?.name
-                if (toCmd == undefined) return
-                const prefCmd = "." + toCmd
-                this.appenTextMessage(chatUpdate, prefCmd, chatUpdate.message)
+export async function pollUpdate(message) {
+  for (const { key, update } of message) {
+            if (message.pollUpdates) {
+                const pollCreation = await this.serializeM(this.loadMessage(key.id))
+                if (pollCreation) {
+                    const pollMessage = await getAggregateVotesInPollMessage({
+                        message: pollCreation.message,
+                        pollUpdates: pollCreation.pollUpdates,
+                    })
+                    message.pollUpdates[0].vote = pollMessage
+                    
+                    await console.log(pollMessage)
+                    this.appenTextMessage(message, message.pollUpdates[0].vote || pollMessage.filter((v) => v.voters.length !== 0)[0]?.name, message.message);
+                }
             }
         }
-    }
 }
 
 /*
