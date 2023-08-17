@@ -15,7 +15,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 	m.reply("Mengubah gambar menjadi kartun...");
 	let img = await q.download?.();
 	try {
-		await Cartoon(img).then(async (response) => {
+		await Cartoon(img).then((response) => {
 			if (response.message == "success") {
 				await conn.sendFile(
 					m.chat,

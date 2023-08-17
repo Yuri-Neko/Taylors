@@ -252,37 +252,33 @@ let effecttxt = [
 "zhongqiu_yueyuan"
 ]
 
-if (!text) return m.reply("*Example:* .qq 2 (Reply image)\nPilih nomor yg ada \n\n" + effecttxt.map((v, index) => "\n" + index + ". " + v.split("_").join(" ")))
+if (!text) return m.reply("*Example:* .qq 2 (Reply image)\nPilih nomor yg ada \n\n" + effecttxt.map((v, index) => "\n" + (index + 1) + ". " + v.split("_").join(" ")).join(""))
 if (!Number(text)) return m.reply("Angka saja")
 if (Number(text) > 245) return m.reply("Angka lebih")
 if (Number(text) < 1) return m.reply("Angka kurang")
 let q = m.quoted ? m.quoted : m
-    let mime = (q.msg || q).mimetype || q.mediaType || ""
-    if (!/image/g.test(mime)) throw `Balas/Kirim Gambar Dengan Perintah ${usedPrefix + command}!`
-    await m.reply(wait)
-    let image = await q.download?.()
-    let anime = await ToAnime(image, effecttxt[text])
-    let vid = anime.video_urls
-    let img = anime.img_urls
-    
-    let res
-    if (vid && img) {
-    res = [...vid, ...img]
-    } else if (img) {
-    res = [...img]
-    } else if (vid) {
-    res = [...vid]
-    }
-    
-    let spas = "                "
-    let listSections = []
-    Object.keys(res).map((v, index) => {
-	listSections.push([spas + "[ RESULT " + ++index + " ]", [
-          ["G E T", usedPrefix + "get " + res[v], "Url: " + res[v]]
-        ]])
-        })
-	return conn.sendList(m.chat, htki + " 📺 QQ Convert 🔎 " + htka, `⚡ Silakan pilih Model di tombol di bawah...\n*Teks yang anda kirim:* ${text}\n\nKetik ulang *${usedPrefix + command}* teks anda untuk mengubah teks lagi`, author, "☂️ M O D E L ☂️", listSections, m)
-	
+let mime = (q.msg || q).mimetype || q.mediaType || ""
+if (!/image/g.test(mime)) throw `Balas/Kirim Gambar Dengan Perintah ${usedPrefix + command}!`
+await m.reply(wait)
+let image = await q.download?.()
+let anime = await ToAnime(image, effecttxt[text - 1])
+let vid = anime.video_urls
+let img = anime.img_urls
+
+let res = []
+
+if (vid && img) {
+  res = [...vid, ...img]
+} else if (img) {
+  res = [...img]
+} else if (vid) {
+  res = [...vid]
+}
+
+let list = res.map((url, index) => `*${index + 1}.* ${url}`).join("\n\n")
+
+await m.reply(`Daftar hasil konversi:\n\n${list}`)
+
 }
 handler.help = ["qq", "qqtu"].map(v => v + " (Balas foto)")
 handler.tags = ["tools"]
