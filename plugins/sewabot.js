@@ -151,19 +151,25 @@ if (tema == 'aud') {
     }
   if (tema == 'stick') {
  await conn.relayMessage(m.chat, 
-{"stickerMessage": {
-						"url": m.quoted.url,
-						"fileSha256": m.quoted.fileSha256,
-						"fileEncSha256": m.quoted.fileEncSha256,
-						"mediaKey": m.quoted.mediaKey,
-						"mimetype": m.quoted.mimetype,
-						"height": m.quoted.height,
-						"width": m.quoted.width,
-						"directPath": m.quoted.directPath,
-						"fileLength": filesize,
-						"mediaKeyTimestamp": m.quoted.mediaKeyTimestamp,
-						"isAnimated": m.quoted.isAnimated
-}},{quoted: fakes})
+{
+    "stickerMessage": {
+        "url": m.quoted.url,
+        "fileSha256": m.quoted.fileSha256,
+        "fileEncSha256": m.quoted.fileEncSha256,
+        "mediaKey": m.quoted.mediaKey,
+        "mimetype": m.quoted.mimetype,
+        "height": 512,
+        "width": 512,
+        "directPath": m.quoted.directPath,
+        "fileLength": filesize,
+        "mediaKeyTimestamp": m.quoted.mediaKeyTimestamp,
+        "firstFrameLength": 14144,
+        "firstFrameSidecar": m.quoted.firstFrameSidecar,
+        "contextInfo": {},
+        "stickerSentTs": m.quoted.stickerSentTs,
+        "isAvatar": true
+    }
+},{quoted: fakes})
   
   }
   if (tema == 'img') {

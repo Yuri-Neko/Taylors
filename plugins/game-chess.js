@@ -72,6 +72,15 @@ conn.chess = conn.chess ? conn.chess : {}
       return conn.reply(m.chat, '⏳ *Sekarang bukan giliran Anda untuk bergerak.*', m);
     }
     const chess = new Chess(fen);
+    if (chess.isCheckmate()) {
+    return conn.reply(m.chat, '⚠️ *Checkmate.*', m);
+    }
+    if (chess.isDraw()) {
+    return conn.reply(m.chat, '⚠️ *Draw.*', m);
+    }
+    if (chess.isGameOver()) {
+    return conn.reply(m.chat, '⚠️ *Game Over.*', m);
+    }
     const [from, to] = args;
     try {
       chess.move({ from, to, promotion: 'q' });
@@ -83,10 +92,11 @@ conn.chess = conn.chess ? conn.chess : {}
     const nextTurnIndex = (currentTurnIndex + 1) % 2;
     chessData.currentTurn = gameData.players[nextTurnIndex];
     const encodedFen = encodeURIComponent(chess.fen());
-    const giliran = `🎲 *Giliran:* @${chessData.currentTurn.split('@')[0]}`;
-    const flipParam = senderId === gameData.players[0] ? '' : '&flip=true';
+    const giliran = `🎲 *Giliran:* @${chessData.currentTurn.split('@')[0]}\n\n${chess.getComment() || ''}`;
+    const flipParam = senderId !== gameData.players[0] ? '' : '&flip=true';
     const boardUrl = `https://www.chess.com/dynboard?fen=${encodedFen}&board=graffiti&piece=graffiti&size=3&coordinates=inside${flipParam}`;
     await conn.sendFile(m.chat, boardUrl, '', giliran, m, false, { mentions: [chessData.currentTurn] });
+    chess.deleteComment();
     return;
   } else if (feature === 'help') {
     return conn.reply(m.chat, `

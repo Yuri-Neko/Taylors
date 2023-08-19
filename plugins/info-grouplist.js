@@ -1,44 +1,68 @@
-let handler = async (m, { conn, usedPrefix, text, command, args, isOwner, isAdmin, isROwner }) => {
-	let groups = Object.values(await conn.groupFetchAllParticipating())
-    let listSections = []
-	Object.keys(groups).map((i, index) => {
-	listSections.push([++index + ' ' + cmenub + ' ' + groups[i].subject, [
-          ['More Information', usedPrefix + command + ' gw ' + [i], '']
-        ]])
-	})
-	
-  let type = (args[0] || '').toLowerCase()
+const handler = async (m, { conn, usedPrefix, args }) => {
+  let groups = Object.values(await conn.groupFetchAllParticipating());
 
-  switch (type) {
-      case 'gw':
-      let i = args[1]
-      let ppgc = await conn.profilePictureUrl(groups[i].id, 'image')
-      let str = `*${dmenut}* ${[i]}
-*${dmenub} Name :* ${groups[i].subject}
-*${dmenub} Owner :* ${groups[i].owner ? "@" + groups[i].owner.split("@")[0] : "Unknown"}
-*${dmenub} Subject Owner :* ${groups[i].subjectOwner ? "@" + groups[i].subjectOwner.split("@")[0] : "Unknown"}
-*${dmenub} ID :* ${groups[i].id}
-*${dmenub} Restrict :* ${groups[i].restrict}
-*${dmenub} Announce :* ${groups[i].announce}
-*${dmenub} Ephemeral :* ${new Date(groups[i].ephemeralDuration* 1000).toDateString()}
-*${dmenub} Desc ID :* ${groups[i].descId}
-*${dmenub} Description :* ${groups[i].desc?.toString().slice(0, 10) + '...' || 'unknown'}
-*${dmenub} Admins :* ${groups[i].participants.filter(p => p.admin).map((v, i) => `\n${dmenub} ${i + 1}. @${v.id.split('@')[0]}`).join(' [admin]')}
-${isOwner ? `*${dmenub} Participants :* ${groups[i].participants.length}` : ''}
-${isOwner ? `*${dmenub} isBotAdmin :* [ ${!!groups[i].participants.find(v => v.id == conn.user.jid).admin} ]` : ''}
-*${dmenub} Created :* ${new Date(groups[i].subjectTime* 1000).toDateString()}
-*${dmenub} Creation :* ${new Date(groups[i].creation* 1000).toDateString()}
-*${dmenub} Size :* ${groups[i].size}
-${dmenuf}`
-      await conn.sendFile(m.chat, ppgc ? ppgc : logo, '', str, m)
-       break
-    default:
-      if (!/[01]/.test(command)) return conn.sendList(m.chat, htki + ' 📺 Group List 🔎 ' + htka, `⚡ Silakan pilih Group List di tombol di bawah...\n*Teks yang anda kirim:* ${text ? text : 'Kosong'}\n\nKetik ulang *${usedPrefix + command}* teks anda untuk mengubah teks lagi`, author, `☂️ Group List Disini ☂️`, listSections, m)
-      throw false
+  if (args.length === 0) {
+    // Menampilkan daftar nama grup dengan urutan
+    const list = groups.map((group, index) => `*${index + 1}.* ${group.subject}`).join('\n');
+    conn.reply(m.chat, `📋 *Daftar Nama Grup dengan Urutan:*\n\n${list}`, m);
+  } else if (args.length === 1 && /^\d+$/.test(args[0])) {
+    const index = parseInt(args[0]) - 1;
+    if (index >= 0 && index < groups.length) {
+      const group = groups[index];
+      const superAdminCount = group.participants.filter(p => p.admin === 'superadmin').length;
+      const adminCount = group.participants.filter(p => p.admin === 'admin').length;
+      const adminList = group.participants.filter(p => p.admin === 'admin').map(a => `- ${a.id.replace(/(\d+)@.+/, '@$1')}`).join('\n');
+      const superAdminList = group.participants.filter(p => p.admin === 'superadmin').map(a => `- ${a.id.replace(/(\d+)@.+/, '@$1')}`).join('\n');
+      const info = `📊 *Informasi Grup Urutan ke-${index + 1}*\n\n` +
+        `*ID:* ${group.id}\n` +
+        `*Subject:* ${group.subject}\n` +
+        `*Pemilik Subject:* ${group.subjectOwner}\n` +
+        `*Waktu Subjek Diubah:* ${formatTime(group.subjectTime)}\n` +
+        `*Waktu Dibuat:* ${formatTime(group.creation)}\n` +
+        `*Pemilik Grup:* ${group.owner.replace(/(\d+)@.+/, '@$1')}\n` +
+        `*Deskripsi:* ${group.desc}\n` +
+        `*ID Deskripsi:* ${group.descId}\n` +
+        `*Batasan:* ${group.restrict ? 'Ya' : 'Tidak'}\n` +
+        `*Pengumuman:* ${group.announce ? 'Ya' : 'Tidak'}\n` +
+        `*Total Partisipan:* ${group.participants.length}\n` +
+        `*Jumlah Superadmin:* ${superAdminCount}\n` +
+        `*Daftar Superadmin:*\n${superAdminList}\n` +
+        `*Jumlah Admin:* ${adminCount}\n` +
+        `*Daftar Admin:*\n${adminList}\n` +
+        `*Durasi Pesan Sementara:* ${formatDuration(group.ephemeralDuration)}`;
+      await m.reply(
+        info,
+        null,
+        {
+            contextInfo: {
+                mentionedJid: group.participants.map((v) => v.id)
+            }
+        }
+    );
+    } else {
+      conn.reply(m.chat, '❌ Grup dengan urutan tersebut tidak ditemukan.', m);
+    }
+  } else {
+    conn.reply(m.chat, `❗ Format perintah salah. Gunakan "${usedPrefix}groups" untuk daftar grup atau "${usedPrefix}groups [nomor_urutan]" untuk informasi grup tertentu.`, m);
   }
-}
-handler.menugroup = ['groups', 'grouplist']
-handler.tagsgroup = ['group']
-handler.command = /^((gro?ups?list)|(listgro?ups?)|(listgc))$/i
+};
 
-export default handler
+handler.menu = ['groups', 'grouplist'];
+handler.tags = ['group'];
+handler.command = /^(gro?ups?list)|(listgro?ups?)|(listgc)$/i;
+
+export default handler;
+
+function formatTime(timestamp) {
+  const date = new Date(timestamp * 1000);
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+}
+
+function formatDuration(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const formatted = [];
+  if (hours > 0) formatted.push(`${hours} jam`);
+  if (minutes > 0) formatted.push(`${minutes} menit`);
+  return formatted.join(' ');
+}
